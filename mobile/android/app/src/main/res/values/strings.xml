@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Keke Ride</string>
+    <string name="title_activity_main">Keke Ride</string>
+    <string name="package_name">com.kekeride.app</string>
+    <string name="custom_url_scheme">com.kekeride.app</string>
+</resources>
