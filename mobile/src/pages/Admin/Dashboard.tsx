@@ -105,8 +105,114 @@ interface SectionMeta {
   label: string;
   description: string;
   category: 'operations' | 'safety' | 'users' | 'governance';
-  icon: string;
 }
+
+const renderSectionIcon = (id: AdminSection, className = 'w-5 h-5') => {
+  switch (id) {
+    case 'overview':
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <rect x="3" y="3" width="7" height="9" rx="1" />
+          <rect x="14" y="3" width="7" height="5" rx="1" />
+          <rect x="14" y="12" width="7" height="9" rx="1" />
+          <rect x="3" y="16" width="7" height="5" rx="1" />
+        </svg>
+      );
+    case 'live-trips':
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" />
+          <circle cx="12" cy="12" r="3" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 3a9 9 0 0 1 9 9" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 12l4-4" />
+        </svg>
+      );
+    case 'recent-trips':
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>
+      );
+    case 'incidents':
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      );
+    case 'rider-review':
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+          <circle cx="9" cy="10" r="2" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 8h2m-2 4h2m-2 4h2M6 16c0-1.5 1.5-2 3-2s3 .5 3 2" />
+        </svg>
+      );
+    case 'accounts':
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      );
+    case 'reports':
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      );
+    case 'audit-log':
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <rect x="5" y="11" width="14" height="10" rx="2" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0v4m-4 4v2" />
+        </svg>
+      );
+    case 'staff-access':
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+        </svg>
+      );
+  }
+};
+
+const renderStatIcon = (type: string, className = 'w-5 h-5') => {
+  switch (type) {
+    case 'passengers':
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+      );
+    case 'riders':
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="8" />
+          <circle cx="12" cy="12" r="3" />
+          <line x1="12" y1="4" x2="12" y2="9" />
+          <line x1="4.93" y1="16.07" x2="9.24" y2="13.57" />
+          <line x1="19.07" y1="16.07" x2="14.76" y2="13.57" />
+        </svg>
+      );
+    case 'trips_today':
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+      );
+    case 'completed_trips':
+      return (
+        <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+};
 
 const errorMessage = (error: unknown, fallback: string) =>
   axios.isAxiosError<{ message?: string }>(error)
@@ -129,21 +235,18 @@ const adminSections: SectionMeta[] = [
     label: 'Overview',
     description: 'KPI metrics & operational alerts',
     category: 'operations',
-    icon: '📊',
   },
   {
     id: 'live-trips',
     label: 'Live Trips',
     description: 'Real-time active ride monitoring',
     category: 'operations',
-    icon: '🚖',
   },
   {
     id: 'recent-trips',
     label: 'Recent Trips',
     description: 'Completed rides and activity logs',
     category: 'operations',
-    icon: '🕒',
   },
 
   // 2. Trust & Safety
@@ -152,14 +255,12 @@ const adminSections: SectionMeta[] = [
     label: 'Incidents',
     description: 'Review and resolve safety reports',
     category: 'safety',
-    icon: '🛡️',
   },
   {
     id: 'rider-review',
     label: 'Rider Verification',
     description: 'Review driver licenses & Ghana cards',
     category: 'safety',
-    icon: '🪪',
   },
 
   // 3. User Management
@@ -168,7 +269,6 @@ const adminSections: SectionMeta[] = [
     label: 'Accounts',
     description: 'Search, create & manage user accounts',
     category: 'users',
-    icon: '👥',
   },
 
   // 4. Governance & Analytics
@@ -177,21 +277,18 @@ const adminSections: SectionMeta[] = [
     label: 'Reports',
     description: 'Operational & financial analytics',
     category: 'governance',
-    icon: '📈',
   },
   {
     id: 'audit-log',
     label: 'Audit Log',
     description: 'System-wide administrative action logs',
     category: 'governance',
-    icon: '🔒',
   },
   {
     id: 'staff-access',
     label: 'Staff Access',
     description: 'Administrator roles and permissions',
     category: 'governance',
-    icon: '🔑',
   },
 ];
 
@@ -526,10 +623,10 @@ const AdminDashboard = () => {
 
   const statCards = dashboard
     ? [
-        { label: 'Registered Passengers', value: dashboard.stats.passengers, icon: '🚶' },
-        { label: 'Registered Riders', value: dashboard.stats.riders, icon: '🛵' },
-        { label: 'Trips Today', value: dashboard.stats.trips_today, icon: '📅' },
-        { label: 'Completed Trips', value: dashboard.stats.completed_trips, icon: '🏁' },
+        { key: 'passengers', label: 'Registered Passengers', value: dashboard.stats.passengers },
+        { key: 'riders', label: 'Registered Riders', value: dashboard.stats.riders },
+        { key: 'trips_today', label: 'Trips Today', value: dashboard.stats.trips_today },
+        { key: 'completed_trips', label: 'Completed Trips', value: dashboard.stats.completed_trips },
       ]
     : [];
 
@@ -664,12 +761,16 @@ const AdminDashboard = () => {
                   onClick={() => selectSection(section.id)}
                   className={`flex flex-col justify-between rounded-xl border p-2.5 text-left transition ${
                     isSelected
-                      ? 'border-emerald-600 bg-emerald-50/70 shadow-sm ring-1 ring-emerald-500'
-                      : 'border-slate-200 bg-slate-50 hover:bg-white hover:border-slate-300'
+                      ? 'border-amber-500 bg-amber-50/80 shadow-xs ring-1 ring-amber-400'
+                      : 'border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-xl">{section.icon}</span>
+                    <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                      isSelected ? 'bg-amber-400 text-slate-950 font-bold' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {renderSectionIcon(section.id, 'w-4 h-4')}
+                    </span>
                     {badge !== undefined && badge > 0 && (
                       <span className="rounded-full bg-amber-400 px-1.5 py-0.2 text-[10px] font-black text-slate-950 shadow-sm">
                         {badge}
@@ -677,7 +778,7 @@ const AdminDashboard = () => {
                     )}
                   </div>
                   <div className="mt-2">
-                    <p className={`text-xs font-bold leading-tight ${isSelected ? 'text-emerald-950 font-black' : 'text-slate-900'}`}>
+                    <p className={`text-xs font-bold leading-tight ${isSelected ? 'text-amber-950 font-black' : 'text-slate-900'}`}>
                       {section.label}
                     </p>
                     <p className="mt-0.5 text-[10px] text-slate-500 line-clamp-1">{section.description}</p>
@@ -692,14 +793,16 @@ const AdminDashboard = () => {
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-extrabold uppercase tracking-widest text-emerald-800">
+              <span className="text-xs font-extrabold uppercase tracking-widest text-amber-800">
                 {categoryMeta[selectedSection.category].name}
               </span>
               <span className="text-slate-400">/</span>
               <span className="text-xs font-semibold text-slate-500">{categoryMeta[selectedSection.category].tag}</span>
             </div>
-            <h2 className="mt-1 text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <span>{selectedSection.icon}</span>
+            <h2 className="mt-1 text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-900">
+                {renderSectionIcon(selectedSection.id, 'w-5 h-5')}
+              </span>
               <span>{selectedSection.label}</span>
             </h2>
             <p className="text-xs text-slate-600 mt-0.5">{selectedSection.description}</p>
@@ -816,7 +919,9 @@ const AdminDashboard = () => {
                   <article key={card.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow">
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-bold text-slate-500">{card.label}</p>
-                      <span className="text-lg">{card.icon}</span>
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                        {renderStatIcon(card.key, 'w-4 h-4')}
+                      </span>
                     </div>
                     <p className="mt-2 text-3xl font-black text-slate-900">{card.value.toLocaleString()}</p>
                   </article>
@@ -839,8 +944,8 @@ const AdminDashboard = () => {
                           onClick={() => selectSection(sec.id)}
                           className="flex w-full items-center justify-between rounded-lg p-2 text-left text-xs font-bold text-slate-800 hover:bg-white hover:shadow-xs transition"
                         >
-                          <span className="flex items-center gap-1.5">
-                            <span>{sec.icon}</span>
+                          <span className="flex items-center gap-2">
+                            <span className="text-slate-500">{renderSectionIcon(sec.id, 'w-4 h-4')}</span>
                             <span>{sec.label}</span>
                           </span>
                           <span className="text-slate-400">›</span>

@@ -737,10 +737,10 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                           <button
                             type="button"
                             onClick={() => void openPassengerPanel('wallet')}
-                            className="flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
+                            className="group flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
                           >
                             <div className="flex items-center gap-3">
-                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-800 font-bold">
+                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-900 font-bold group-hover:bg-amber-200 transition">
                                 ₵
                               </span>
                               <div>
@@ -748,16 +748,16 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                                 <p className="text-xs text-slate-500">₵{Number(settings.wallet_balance || 0).toFixed(2)} · Instant top-up & transactions</p>
                               </div>
                             </div>
-                            <span className="text-slate-400">›</span>
+                            <span className="text-slate-400 group-hover:text-slate-700 transition">›</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => void openPassengerPanel('payment')}
-                            className="flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
+                            className="group flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
                           >
                             <div className="flex items-center gap-3">
-                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-800">
+                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700 group-hover:bg-slate-200 transition">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                   <rect x="2" y="5" width="20" height="14" rx="2" />
                                   <line x1="2" y1="10" x2="22" y2="10" />
@@ -768,16 +768,16 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                                 <p className="text-xs text-slate-500">Default: <span className="capitalize font-semibold text-slate-700">{settings.payment_method === 'mobile_money' ? 'Mobile Money' : settings.payment_method}</span></p>
                               </div>
                             </div>
-                            <span className="text-slate-400">›</span>
+                            <span className="text-slate-400 group-hover:text-slate-700 transition">›</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => void openPassengerPanel('history')}
-                            className="flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
+                            className="group flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
                           >
                             <div className="flex items-center gap-3">
-                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
+                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700 group-hover:bg-slate-200 transition">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                   <circle cx="12" cy="12" r="10" />
                                   <polyline points="12 6 12 12 16 14" />
@@ -788,18 +788,18 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                                 <p className="text-xs text-slate-500">Past trips, routes and receipts</p>
                               </div>
                             </div>
-                            <span className="text-slate-400">›</span>
+                            <span className="text-slate-400 group-hover:text-slate-700 transition">›</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => void openPassengerPanel('favorites')}
-                            className="flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
+                            className="group flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
                           >
                             <div className="flex items-center gap-3">
-                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-100 text-purple-800">
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700 group-hover:bg-slate-200 transition">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                                 </svg>
                               </span>
                               <div>
@@ -807,16 +807,16 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                                 <p className="text-xs text-slate-500">Home, Work and frequent destinations</p>
                               </div>
                             </div>
-                            <span className="text-slate-400">›</span>
+                            <span className="text-slate-400 group-hover:text-slate-700 transition">›</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => void openPassengerPanel('deliveries')}
-                            className="flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
+                            className="group flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
                           >
                             <div className="flex items-center gap-3">
-                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-100 text-orange-800">
+                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700 group-hover:bg-slate-200 transition">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                                 </svg>
@@ -826,7 +826,7 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                                 <p className="text-xs text-slate-500">Send packages with trusted keke riders</p>
                               </div>
                             </div>
-                            <span className="text-slate-400">›</span>
+                            <span className="text-slate-400 group-hover:text-slate-700 transition">›</span>
                           </button>
                         </div>
                       </div>
@@ -838,10 +838,10 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                           <button
                             type="button"
                             onClick={() => void openPassengerPanel('safety')}
-                            className="flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
+                            className="group flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
                           >
                             <div className="flex items-center gap-3">
-                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-100 text-red-800">
+                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700 group-hover:bg-slate-200 transition">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                                 </svg>
@@ -853,16 +853,16 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                                 </p>
                               </div>
                             </div>
-                            <span className="text-slate-400">›</span>
+                            <span className="text-slate-400 group-hover:text-slate-700 transition">›</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => void openPassengerPanel('preferences')}
-                            className="flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
+                            className="group flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
                           >
                             <div className="flex items-center gap-3">
-                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-800">
+                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700 group-hover:bg-slate-200 transition">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                                 </svg>
@@ -872,7 +872,7 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                                 <p className="text-xs text-slate-500">Quiet ride, luggage, receipts & booking mode</p>
                               </div>
                             </div>
-                            <span className="text-slate-400">›</span>
+                            <span className="text-slate-400 group-hover:text-slate-700 transition">›</span>
                           </button>
                         </div>
                       </div>
@@ -884,10 +884,10 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                           <button
                             type="button"
                             onClick={() => void openPassengerPanel('profile')}
-                            className="flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
+                            className="group flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
                           >
                             <div className="flex items-center gap-3">
-                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-100 text-indigo-800">
+                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700 group-hover:bg-slate-200 transition">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
@@ -897,16 +897,16 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                                 <p className="text-xs text-slate-500">Name, email & verified mobile number</p>
                               </div>
                             </div>
-                            <span className="text-slate-400">›</span>
+                            <span className="text-slate-400 group-hover:text-slate-700 transition">›</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => void openPassengerPanel('app_settings')}
-                            className="flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
+                            className="group flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
                           >
                             <div className="flex items-center gap-3">
-                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-100 text-teal-800">
+                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700 group-hover:bg-slate-200 transition">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -917,7 +917,7 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                                 <p className="text-xs text-slate-500">Notifications, language ({settings.preferred_language.toUpperCase()}) & data</p>
                               </div>
                             </div>
-                            <span className="text-slate-400">›</span>
+                            <span className="text-slate-400 group-hover:text-slate-700 transition">›</span>
                           </button>
                         </div>
                       </div>
@@ -929,10 +929,10 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                           <button
                             type="button"
                             onClick={() => void openPassengerPanel('help')}
-                            className="flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
+                            className="group flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
                           >
                             <div className="flex items-center gap-3">
-                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-100 text-cyan-800">
+                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700 group-hover:bg-slate-200 transition">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
@@ -942,16 +942,16 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                                 <p className="text-xs text-slate-500">Trip assistance & in-app support tickets</p>
                               </div>
                             </div>
-                            <span className="text-slate-400">›</span>
+                            <span className="text-slate-400 group-hover:text-slate-700 transition">›</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => void openPassengerPanel('lost')}
-                            className="flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
+                            className="group flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
                           >
                             <div className="flex items-center gap-3">
-                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-800">
+                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700 group-hover:bg-slate-200 transition">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
@@ -961,16 +961,16 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                                 <p className="text-xs text-slate-500">File a report for items left in a tricycle</p>
                               </div>
                             </div>
-                            <span className="text-slate-400">›</span>
+                            <span className="text-slate-400 group-hover:text-slate-700 transition">›</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => void openPassengerPanel('about')}
-                            className="flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
+                            className="group flex w-full items-center justify-between p-3.5 text-left transition hover:bg-slate-50"
                           >
                             <div className="flex items-center gap-3">
-                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-800">
+                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700 group-hover:bg-slate-200 transition">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
@@ -980,7 +980,7 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                                 <p className="text-xs text-slate-500">Version 1.3.1 · Terms & Privacy</p>
                               </div>
                             </div>
-                            <span className="text-slate-400">›</span>
+                            <span className="text-slate-400 group-hover:text-slate-700 transition">›</span>
                           </button>
                         </div>
                       </div>
@@ -1808,9 +1808,9 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                         <button
                           type="button"
                           onClick={() => setRiderPanel('shift')}
-                          className="flex flex-col text-left p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-indigo-300 hover:shadow-md transition active:scale-98 group"
+                          className="flex flex-col text-left p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs transition active:scale-98 group"
                         >
-                          <div className="h-9 w-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition">
+                          <div className="h-9 w-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center group-hover:bg-amber-100 group-hover:text-amber-900 transition">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
@@ -1823,9 +1823,9 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                         <button
                           type="button"
                           onClick={() => setRiderPanel('earnings')}
-                          className="flex flex-col text-left p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-emerald-300 hover:shadow-md transition active:scale-98 group"
+                          className="flex flex-col text-left p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs transition active:scale-98 group"
                         >
-                          <div className="h-9 w-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition">
+                          <div className="h-9 w-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center group-hover:bg-amber-100 group-hover:text-amber-900 transition">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
@@ -1838,9 +1838,9 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                         <button
                           type="button"
                           onClick={() => setRiderPanel('vehicle')}
-                          className="flex flex-col text-left p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-amber-300 hover:shadow-md transition active:scale-98 group"
+                          className="flex flex-col text-left p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs transition active:scale-98 group"
                         >
-                          <div className="h-9 w-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition">
+                          <div className="h-9 w-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center group-hover:bg-amber-100 group-hover:text-amber-900 transition">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
@@ -1853,9 +1853,9 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                         <button
                           type="button"
                           onClick={() => setRiderPanel('preferences')}
-                          className="flex flex-col text-left p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-sky-300 hover:shadow-md transition active:scale-98 group"
+                          className="flex flex-col text-left p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs transition active:scale-98 group"
                         >
-                          <div className="h-9 w-9 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center group-hover:scale-110 transition">
+                          <div className="h-9 w-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center group-hover:bg-amber-100 group-hover:text-amber-900 transition">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                             </svg>
@@ -1868,9 +1868,9 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                         <button
                           type="button"
                           onClick={() => setRiderPanel('profile')}
-                          className="flex flex-col text-left p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-violet-300 hover:shadow-md transition active:scale-98 group"
+                          className="flex flex-col text-left p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs transition active:scale-98 group"
                         >
-                          <div className="h-9 w-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center group-hover:scale-110 transition">
+                          <div className="h-9 w-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center group-hover:bg-amber-100 group-hover:text-amber-900 transition">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
@@ -1883,9 +1883,9 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
                         <button
                           type="button"
                           onClick={() => setRiderPanel('incidents')}
-                          className="flex flex-col text-left p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-rose-300 hover:shadow-md transition active:scale-98 group"
+                          className="flex flex-col text-left p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs transition active:scale-98 group"
                         >
-                          <div className="h-9 w-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center group-hover:scale-110 transition">
+                          <div className="h-9 w-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center group-hover:bg-amber-100 group-hover:text-amber-900 transition">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                             </svg>
@@ -1943,10 +1943,25 @@ const SettingsMenu = ({ role, standalone = false }: SettingsMenuProps) => {
 
                         <div className="mt-4 rounded-xl bg-slate-50 p-4 border border-slate-100">
                           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Current State</p>
-                          <p className="mt-1 text-base font-extrabold text-slate-900">
-                            {shiftOnBreak ? '☕ On Rest Break' : shiftActive ? '● Shift Active (Driving)' : '○ Off Duty'}
-                          </p>
-                          <p className="text-xs text-slate-500 mt-1">Recorded shift time: <strong className="text-slate-800">{shiftHoursFormatted}</strong></p>
+                          <div className="mt-1.5 flex items-center gap-2">
+                            {shiftOnBreak ? (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-900 border border-amber-200">
+                                <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                                On Rest Break
+                              </span>
+                            ) : shiftActive ? (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-900 border border-emerald-200">
+                                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                                Shift Active (Driving)
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-bold text-slate-700 border border-slate-300">
+                                <span className="h-2 w-2 rounded-full bg-slate-400" />
+                                Off Duty
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 mt-2">Recorded shift time: <strong className="text-slate-800">{shiftHoursFormatted}</strong></p>
                         </div>
 
                         <div className="mt-4 grid grid-cols-2 gap-2">
