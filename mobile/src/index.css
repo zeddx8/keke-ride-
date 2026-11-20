@@ -120,6 +120,88 @@ summary:focus-visible {
   background: rgb(255 193 7 / 38%);
 }
 
+.settings-backdrop {
+  animation: settings-backdrop-in 180ms ease-out both;
+}
+
+.settings-drawer {
+  border-left: 1px solid rgb(30 30 30 / 8%);
+  animation: settings-drawer-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background: #FFFFFF;
+  -webkit-overflow-scrolling: touch;
+  z-index: 3001;
+}
+
+.settings-backdrop {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.settings-drawer-header {
+  flex: 0 0 auto;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 16px);
+  z-index: 2;
+}
+
+.settings-drawer-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  max-width: 960px;
+  margin-inline: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@keyframes settings-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes settings-drawer-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@media (min-width: 768px) {
+  .settings-drawer-header > div,
+  .settings-drawer-header > button {
+    max-width: none;
+  }
+
+  .settings-drawer-header {
+    padding-inline: max(32px, calc((100vw - 960px) / 2));
+  }
+
+  .settings-drawer-content {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 16px;
+    padding-inline: 32px;
+  }
+
+  .settings-drawer-content > p,
+  .settings-drawer-content > button {
+    grid-column: 1 / -1;
+  }
+}
+
 .leaflet-container {
   font-family: inherit;
 }
@@ -399,7 +481,7 @@ summary:focus-visible {
 .dashboard-topbar .dashboard-history {
   border-color: rgb(255 255 255 / 34%);
   background: rgb(255 255 255 / 12%);
-  color: #FFFFFF;
+  color: #1E1E1E;
 }
 
 .dashboard-topbar .dashboard-history:hover {
@@ -734,7 +816,7 @@ summary:focus-visible {
 
 .dashboard-shell .dashboard-history:not(.dashboard-topbar .dashboard-history) {
   border-color: #D8E2DB;
-  color: #006B37;
+  color: #1E1E1E;
 }
 
 .dashboard-shell .dashboard-history:not(.dashboard-topbar .dashboard-history):hover {
@@ -899,7 +981,13 @@ summary:focus-visible {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
+  .settings-drawer {
+    width: 100vw;
+    max-width: 100vw;
+    border-left: 0;
+  }
+
   .admin-feature-menu {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;

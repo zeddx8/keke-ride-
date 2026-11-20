@@ -5,11 +5,15 @@ namespace App\Jobs;
 use App\Events\TripRequested;
 use App\Events\TripStatusUpdated;
 use App\Models\Trip;
+use App\Models\User;
+use App\Services\FirebasePushService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Broadcasting\BroadcastException;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 
 class DispatchRideJob implements ShouldQueue
 {
@@ -27,31 +31,63 @@ class DispatchRideJob implements ShouldQueue
 
     public function handle(): void
     {
-        // 1. Refresh trip to get current status
-        $this->trip->refresh();
+        $dispatchInfo = DB::transaction(function () {
+            $trip = Trip::query()->whereKey($this->trip->id)->lockForUpdate()->first();
 
-        // 2. If the trip was cancelled by passenger or accepted by a previous rider, halt dispatch.
-        if ($this->trip->status !== 'searching') {
-            return; 
+            if (! $trip || $trip->status !== 'searching') {
+                return null;
+            }
+
+            $nextRiderId = array_shift($this->riderIds);
+
+            if (! $nextRiderId) {
+                $trip->update([
+                    'status' => 'cancelled',
+                    'dispatch_rider_id' => null,
+                    'dispatch_expires_at' => null,
+                ]);
+
+                return ['cancelled' => true, 'trip' => $trip];
+            }
+
+            $trip->update([
+                'dispatch_rider_id' => $nextRiderId,
+                'dispatch_expires_at' => now()->addSeconds($this->timeoutSeconds),
+            ]);
+
+            return ['rider_id' => $nextRiderId, 'trip' => $trip];
+        });
+
+        if (! $dispatchInfo) {
+            return;
         }
 
-        // 3. Get the next available rider in the queue
-        $nextRiderId = array_shift($this->riderIds);
-
-        if (!$nextRiderId) {
-            $this->trip->update(['status' => 'cancelled']);
+        if (! empty($dispatchInfo['cancelled'])) {
             event(new TripStatusUpdated(
-                $this->trip,
+                $dispatchInfo['trip'],
                 'No riders accepted your request. Please try again.',
             ));
             return;
         }
 
-        // 4. Ping this rider over WebSockets (handled instantly via ShouldBroadcastNow)
-        event(new TripRequested($this->trip, $nextRiderId, $this->timeoutSeconds));
+        $nextRiderId = $dispatchInfo['rider_id'];
+        $trip = $dispatchInfo['trip'];
 
-        // 5. Dispatch this exact job again, delayed by 20 seconds, with the remaining riders
-        // If the current rider accepts, the trip status changes, and this delayed job will harmlessly abort at Step 2.
-        self::dispatch($this->trip, $this->riderIds)->delay(now()->addSeconds($this->timeoutSeconds));
+        try {
+            event(new TripRequested($trip, $nextRiderId, $this->timeoutSeconds));
+        } catch (BroadcastException $exception) {
+            report($exception);
+        }
+
+        $rider = User::find($nextRiderId);
+        if ($rider) {
+            app(FirebasePushService::class)->sendTripRequest(
+                $rider,
+                $trip,
+                $this->timeoutSeconds,
+            );
+        }
+
+        self::dispatch($trip, $this->riderIds)->delay(now()->addSeconds($this->timeoutSeconds));
     }
 }

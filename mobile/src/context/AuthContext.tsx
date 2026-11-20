@@ -1,9 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import apiClient from '../api/client';
+import { registerRiderPushToken, removeRiderPushToken } from '../services/firebaseMessaging';
 
 export interface AuthUser {
   id: number;
   name: string | null;
+  avatar_url: string | null;
   phone: string;
   role: 'passenger' | 'rider' | 'admin';
   admin_role: 'super_admin' | 'operations' | 'support' | null;
@@ -26,7 +28,8 @@ interface AuthContextValue {
   resendRegistrationCode: (phone: string) => Promise<void>;
   requestPasswordReset: (phone: string) => Promise<void>;
   resetPassword: (phone: string, otp: string, password: string, passwordConfirmation: string) => Promise<void>;
-  logout: () => void;
+  updateAvatar: (avatarUrl: string | null) => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -46,8 +49,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     apiClient.get<AuthUser>('/user')
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         if (isMounted) setUser(data);
+        if (data.role === 'rider') {
+          await registerRiderPushToken();
+        }
       })
       .catch((error: unknown) => {
         console.error('Failed to restore authenticated session', error);
@@ -93,6 +99,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const response = await apiClient.get<AuthUser>('/user');
       setUser(response.data);
+      if (response.data.role === 'rider') {
+        await registerRiderPushToken();
+      }
     } catch (error) {
       localStorage.removeItem('auth_token');
       throw error;
@@ -121,9 +130,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const logout = () => {
-    localStorage.removeItem('auth_token');
-    setUser(null);
+  const logout = async () => {
+    try {
+      await apiClient.post('/auth/logout');
+    } catch {
+      // Ignore network errors or expired sessions on logout
+    } finally {
+      await removeRiderPushToken();
+      localStorage.removeItem('auth_token');
+      setUser(null);
+    }
+  };
+
+  const updateAvatar = (avatarUrl: string | null) => {
+    setUser((current) => current ? { ...current, avatar_url: avatarUrl } : current);
   };
 
   return (
@@ -136,6 +156,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       resendRegistrationCode,
       requestPasswordReset,
       resetPassword,
+      updateAvatar,
       logout,
     }}>
       {children}

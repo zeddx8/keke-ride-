@@ -122,6 +122,13 @@ class RiderProfileController extends Controller
             'verification_status' => $profile->verification_status,
             'license_image_url' => $licenseUrl,
             'ghana_card_image_url' => $cardUrl,
+            'vehicle_make' => $profile->vehicle_make,
+            'vehicle_model' => $profile->vehicle_model,
+            'vehicle_color' => $profile->vehicle_color,
+            'license_expiry' => $profile->license_expiry?->format('Y-m-d'),
+            'insurance_expiry' => $profile->insurance_expiry?->format('Y-m-d'),
+            'vehicle_papers_expiry' => $profile->vehicle_papers_expiry?->format('Y-m-d'),
+            'roadworthy_expiry' => $profile->roadworthy_expiry?->format('Y-m-d'),
             // Omit sending the actual license/card numbers back to the client unless strictly necessary
         ];
     }

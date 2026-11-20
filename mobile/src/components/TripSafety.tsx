@@ -88,7 +88,7 @@ const TripSafety = ({
     ].filter(Boolean).join('\n');
   };
 
-  const saveContact = () => {
+  const saveContact = async () => {
     const normalizedPhone = contact.phone.trim();
     if (normalizedPhone && !/^[+0-9().\-\s]{7,24}$/.test(normalizedPhone)) {
       setError('Enter a valid phone number, including country code if needed.');
@@ -105,6 +105,10 @@ const TripSafety = ({
         localStorage.removeItem(`trusted_contact_phone_${userId}`);
       }
       setContact({ ...contact, phone: normalizedPhone });
+      await apiClient.patch('/settings', {
+        trusted_contact_name: normalizedPhone ? contact.name.trim() || null : null,
+        trusted_contact_phone: normalizedPhone || null,
+      });
       setError(null);
       setNotice(normalizedPhone ? 'Trusted contact saved on this device.' : 'Trusted contact removed.');
       setIsEditingContact(false);

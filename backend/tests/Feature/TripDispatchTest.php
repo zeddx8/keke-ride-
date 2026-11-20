@@ -8,6 +8,7 @@ use App\Models\Trip;
 use App\Models\User;
 use App\Services\TripRoutingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
@@ -88,8 +89,39 @@ class TripDispatchTest extends TestCase
             ->assertJson(['message' => 'Your account must be approved before you can go online.']);
     }
 
+    public function test_rider_only_receives_the_dispatch_attempt_assigned_to_them(): void
+    {
+        $passenger = User::factory()->create(['role' => 'passenger']);
+        $assignedRider = User::factory()->create(['role' => 'rider']);
+        $otherRider = User::factory()->create(['role' => 'rider']);
+
+        $trip = Trip::create([
+            'passenger_id' => $passenger->id,
+            'pickup_point' => DB::raw("ST_GeomFromText('POINT(-1.24 5.10)', 4326)"),
+            'destination_point' => DB::raw("ST_GeomFromText('POINT(-1.25 5.11)', 4326)"),
+            'estimated_distance_km' => 2.5,
+            'estimated_fare' => 11.25,
+            'status' => 'searching',
+            'pickup_location' => 'Cape Coast Central',
+            'destination_location' => 'CCTU',
+            'dispatch_rider_id' => $assignedRider->id,
+            'dispatch_expires_at' => now()->addSeconds(20),
+        ]);
+
+        $this->actingAs($assignedRider)
+            ->getJson('/api/rider/incoming')
+            ->assertOk()
+            ->assertJsonPath('trip.trip_id', $trip->id);
+
+        $this->actingAs($otherRider)
+            ->getJson('/api/rider/incoming')
+            ->assertOk()
+            ->assertJsonPath('trip', null);
+    }
+
     public function test_race_condition_prevents_multiple_riders_accepting_same_trip()
     {
+        Event::fake();
         $passenger = User::factory()->create(['role' => 'passenger']);
 
         $riderOne = User::factory()->create(['role' => 'rider']);

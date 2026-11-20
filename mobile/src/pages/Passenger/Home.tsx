@@ -8,6 +8,9 @@ import echo from '../../api/echo';
 import TripHistory from '../../components/TripHistory';
 import ReportTripIssue from '../../components/ReportTripIssue';
 import TripSafety from '../../components/TripSafety';
+import AccountAvatar from '../../components/AccountAvatar';
+import SettingsMenu from '../../components/SettingsMenu';
+import { useToast } from '../../context/ToastContext';
 
 interface AcceptedTrip {
   id: number;
@@ -126,7 +129,10 @@ const getEstimateKey = (pickup: Coordinates, destination: Coordinates) => (
 );
 
 const PassengerHome = () => {
-  const { user, logout } = useAuth();
+  const { user, updateAvatar } = useAuth();
+  const toast = useToast();
+  const [serviceMode, setServiceMode] = useState<'ride' | 'delivery'>('ride');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'wallet' | 'mobile_money'>('cash');
   const [isRequesting, setIsRequesting] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -166,6 +172,20 @@ const PassengerHome = () => {
   const isEstimating = !!destination && !estimate && !currentEstimateError;
 
   useEffect(() => {
+    apiClient.get<{
+      settings: {
+        default_service_type: 'ride' | 'delivery';
+        payment_method: 'cash' | 'wallet' | 'mobile_money';
+      };
+    }>('/settings')
+      .then(({ data }) => {
+        setServiceMode(data.settings.default_service_type || 'ride');
+        setPaymentMethod(data.settings.payment_method || 'cash');
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
     if (!user) return;
 
     // Listen to the private passenger channel for trip updates from drivers
@@ -184,7 +204,7 @@ const PassengerHome = () => {
         setIsSearching(false);
         setSearchingTripId(null);
         setSearchNotice(null);
-        alert('A driver is on the way!');
+        toast.success('A driver has accepted your request and is on the way!');
       })
       .listen('.TripStatusUpdated', (event: TripEvent) => {
         if (event.trip.status === 'cancelled') {
@@ -218,7 +238,7 @@ const PassengerHome = () => {
         if (event.trip.status === 'completed') {
           setSearchingTripId(null);
           setTripRoute(null);
-          alert('Trip completed. Please pay the rider in cash. You can rate your ride from Trip history.');
+          toast.success('Trip completed! You can rate your ride and view receipt in Trip History.');
         }
       });
 
@@ -538,6 +558,7 @@ const PassengerHome = () => {
         id: number;
         status: string;
         route_geometry: RouteCoordinate[];
+        payment_method: 'cash' | 'wallet' | 'mobile_money';
       }>('/trips', {
         pickup_lat: tripPickup.lat,
         pickup_lng: tripPickup.lng,
@@ -546,6 +567,7 @@ const PassengerHome = () => {
         destination_lat: tripDestination.lat,
         destination_lng: tripDestination.lng,
         destination_location: tripDestinationLabel,
+        payment_method: paymentMethod,
       });
       
       setSearchingTripId(response.data.id);
@@ -557,7 +579,7 @@ const PassengerHome = () => {
         destination: tripDestination,
         destinationLabel: tripDestinationLabel,
         estimatedFare: tripEstimate.estimated_fare,
-        paymentMethod: 'cash',
+        paymentMethod: response.data.payment_method || paymentMethod,
         routeGeometry: response.data.route_geometry,
       });
       setIsSearching(true);
@@ -620,9 +642,13 @@ const PassengerHome = () => {
       <div className="absolute top-0 w-full z-[1000] p-4 pt-[calc(env(safe-area-inset-top)+1rem)] bg-gradient-to-b from-white/95 to-transparent pointer-events-none">
         <div className="dashboard-topbar flex justify-between items-center bg-white/95 backdrop-blur-xl p-3 rounded-2xl shadow-lg shadow-slate-900/10 border border-white/80 pointer-events-auto">
           <div className="flex items-center space-x-3">
-            <div className="dashboard-avatar h-10 w-10 bg-slate-900 rounded-2xl flex items-center justify-center text-amber-300 font-bold ring-1 ring-slate-900/10">
-              {user?.phone?.substring(user.phone.length - 4)}
-            </div>
+            <AccountAvatar
+              name={user?.name}
+              phone={user?.phone}
+              avatarUrl={user?.avatar_url}
+              onChanged={updateAvatar}
+              passenger
+            />
             <div>
               <p className="text-sm font-bold tracking-tight text-slate-900">Passenger</p>
               <p className="text-xs text-gray-500">
@@ -632,9 +658,7 @@ const PassengerHome = () => {
           </div>
           <div className="flex items-center gap-2">
             <TripHistory />
-            <button onClick={logout} className="dashboard-logout rounded-xl bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-800 transition hover:bg-orange-100">
-              Logout
-            </button>
+            <SettingsMenu role="passenger" />
           </div>
         </div>
       </div>
@@ -686,6 +710,13 @@ const PassengerHome = () => {
       <div className="absolute bottom-0 w-full z-[1000] p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pointer-events-none">
         <div className="dashboard-sheet max-h-[62vh] overflow-y-auto bg-white/95 backdrop-blur-xl p-6 rounded-3xl shadow-2xl shadow-slate-900/15 border border-white/90 pointer-events-auto">
           {locationError && <p className="text-xs text-red-500 mb-2">{locationError}</p>}
+
+          {!activeTrip && !isSearching && (
+            <div className="mb-4 grid grid-cols-2 rounded-xl bg-slate-100 p-1">
+              <button type="button" onClick={() => setServiceMode('ride')} className={`rounded-lg py-2.5 text-sm font-bold transition ${serviceMode === 'ride' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500'}`}>Ride</button>
+              <button type="button" onClick={() => setServiceMode('delivery')} className={`rounded-lg py-2.5 text-sm font-bold transition ${serviceMode === 'delivery' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500'}`}>Delivery</button>
+            </div>
+          )}
           
           <h3 className="text-lg font-bold text-gray-900 mb-1">
             {activeTrip
@@ -771,6 +802,33 @@ const PassengerHome = () => {
               {savedPlacesError && (
                 <p className="text-xs text-red-600" role="alert">{savedPlacesError}</p>
               )}
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  ['Home', '⌂'],
+                  ['Work', '▦'],
+                  ['Favorite Places', '♡'],
+                  ['Set Location On Map', '⌖'],
+                ].map(([label, icon]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => {
+                      if (label === 'Set Location On Map') {
+                        setDestinationSearch('');
+                        setPlaceResults([]);
+                        setRequestError(null);
+                        return;
+                      }
+                      const place = savedPlaces.find((item) => item.name.toLowerCase() === label.toLowerCase() || (label === 'Favorite Places' && savedPlaces.length > 0));
+                      if (place) handleSavedPlaceSelect(place);
+                      else setPlaceSearchError(`${label} has no saved location yet.`);
+                    }}
+                    className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-left text-xs font-bold text-slate-700"
+                  >
+                    <span className="text-base text-amber-700">{icon}</span>{label}
+                  </button>
+                ))}
+              </div>
               {savedPlaces.length > 0 && (
                 <div>
                   <p className="mb-2 text-xs font-semibold text-gray-600">Saved places</p>
@@ -877,6 +935,13 @@ const PassengerHome = () => {
           )}
           {searchNotice && <p className="mb-3 text-sm text-gray-600">{searchNotice}</p>}
           
+          {serviceMode === 'delivery' ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-6 text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white text-3xl shadow-sm">♙</div>
+              <p className="mt-3 font-bold text-slate-900">No deliveries booked</p>
+              <p className="mt-1 text-xs text-slate-500">Delivery booking is not available yet.</p>
+            </div>
+          ) : (
           <button
             onClick={handleRequestRide}
             disabled={isRequesting || isSearching || !!activeTrip || !destination || !estimate}
@@ -898,6 +963,7 @@ const PassengerHome = () => {
               'Review ride details'
             )}
           </button>
+          )}
           {!activeTrip && !isSearching && (
             <p className="mt-2 text-center text-xs text-gray-500">
               You can cancel while searching, before a rider accepts. After acceptance, cancellation is not available in the app.

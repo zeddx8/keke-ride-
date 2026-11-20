@@ -3,8 +3,10 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
+use App\Services\HubtelSmsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
@@ -206,5 +208,46 @@ class OtpTest extends TestCase
 
         $this->postJson('/api/auth/resend-registration-code', ['phone' => $user->phone])
             ->assertTooManyRequests();
+    }
+
+    public function test_hubtel_service_normalizes_ghana_numbers_and_sends_sms(): void
+    {
+        config([
+            'services.hubtel.url' => 'https://smsc.hubtel.com/v1/messages/send',
+            'services.hubtel.client_id' => 'test-client',
+            'services.hubtel.client_secret' => 'test-secret',
+            'services.hubtel.sender_id' => 'KekeRide',
+        ]);
+
+        Http::fake([
+            'https://smsc.hubtel.com/v1/messages/send' => Http::response(['Status' => 0], 200),
+        ]);
+
+        (new HubtelSmsService())->send('0241234567', 'Your Keke Ride code is 123456.');
+
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://smsc.hubtel.com/v1/messages/send'
+                && $request['From'] === 'KekeRide'
+                && $request['To'] === '233241234567'
+                && str_contains((string) $request['Content'], '123456');
+        });
+    }
+
+    public function test_production_registration_requires_configured_sms_delivery(): void
+    {
+        app()->detectEnvironment(fn () => 'production');
+        config([
+            'services.hubtel.client_id' => null,
+            'services.hubtel.client_secret' => null,
+            'services.hubtel.sender_id' => null,
+        ]);
+
+        $this->postJson('/api/auth/register', [
+            'name' => 'Production User',
+            'phone' => '0249876543',
+            'role' => 'passenger',
+            'password' => 'secure-password',
+            'password_confirmation' => 'secure-password',
+        ])->assertServiceUnavailable();
     }
 }

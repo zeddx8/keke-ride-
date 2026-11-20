@@ -8,6 +8,9 @@ import echo from '../../api/echo';
 import SwipeToAccept from '../../components/SwipeToAccept';
 import TripHistory from '../../components/TripHistory';
 import ReportTripIssue from '../../components/ReportTripIssue';
+import AccountAvatar from '../../components/AccountAvatar';
+import SettingsMenu from '../../components/SettingsMenu';
+import { useToast } from '../../context/ToastContext';
 
 interface IncomingTrip {
   trip_id: number;
@@ -45,6 +48,8 @@ interface ActiveTrip {
   id: number;
   status: 'accepted' | 'arrived' | 'started' | 'completed';
   rider_id: number;
+  payment_method?: string;
+  payment_status?: 'pending' | 'collected';
   pickup_latitude: number;
   pickup_longitude: number;
   destination_latitude: number;
@@ -64,7 +69,8 @@ type RestoredTrip = Omit<
 };
 
 const DriverHome = () => {
-  const { user, logout } = useAuth();
+  const { user, updateAvatar } = useAuth();
+  const toast = useToast();
   const [isOnline, setIsOnline] = useState(false);
   const [incomingTrip, setIncomingTrip] = useState<IncomingTrip | null>(null);
   const [activeTrip, setActiveTrip] = useState<ActiveTrip | null>(null);
@@ -79,6 +85,7 @@ const DriverHome = () => {
   const [navigationError, setNavigationError] = useState<string | null>(null);
   const [alertsEnabled, setAlertsEnabled] = useState(() => localStorage.getItem('rider_alerts_enabled') === 'true');
   const [alertSetupError, setAlertSetupError] = useState<string | null>(null);
+  const [navigationApp, setNavigationApp] = useState<'google_maps' | 'waze' | 'in_app'>('in_app');
   const { location, error: locationError } = useLocation(!!activeTrip || isOnline);
   const lastLocationUpdate = useRef<{ trackingKey: string; timestamp: number } | null>(null);
   const locationRef = useRef(location);
@@ -88,6 +95,12 @@ const DriverHome = () => {
   const defaultLat = location?.coords.latitude ?? 5.1053;
   const defaultLng = location?.coords.longitude ?? -1.2466;
   const activeTripId = activeTrip?.id;
+
+  useEffect(() => {
+    apiClient.get<{ settings: { navigation_app: 'google_maps' | 'waze' | 'in_app' } }>('/settings')
+      .then(({ data }) => setNavigationApp(data.settings.navigation_app || 'in_app'))
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     locationRef.current = location;
@@ -383,13 +396,98 @@ const DriverHome = () => {
           playRideRequestAlert();
         }
         setIncomingTrip(trip);
+      })
+      .listen('.TripStatusUpdated', (event: { trip: { id: number; status: string; message?: string } }) => {
+        if (event.trip?.status === 'cancelled') {
+          setIncomingTrip((cur) => {
+            if (cur && cur.trip_id === event.trip.id) {
+              lastNotifiedTripId.current = null;
+              return null;
+            }
+            return cur;
+          });
+        }
       });
 
     return () => {
       channel.stopListening('.TripRequested');
+      channel.stopListening('.TripStatusUpdated');
       echo.leave(`rider.${user.id}`);
     };
   }, [user, isOnline, activeTrip, alertsEnabled, playRideRequestAlert]);
+
+  useEffect(() => {
+    if (!user || !isOnline || activeTrip) return;
+
+    let requestInFlight = false;
+    const refreshIncomingTrip = async () => {
+      if (requestInFlight || document.visibilityState !== 'visible') return;
+      requestInFlight = true;
+      try {
+        const { data } = await apiClient.get<{ trip: IncomingTrip | null }>('/rider/incoming');
+        if (!data.trip) {
+          setIncomingTrip(null);
+          return;
+        }
+
+        const trip = {
+          ...data.trip,
+          pickup_lat: Number(data.trip.pickup_lat),
+          pickup_lng: Number(data.trip.pickup_lng),
+          destination_lat: Number(data.trip.destination_lat),
+          destination_lng: Number(data.trip.destination_lng),
+          estimated_fare: Number(data.trip.estimated_fare),
+          estimated_distance_km: Number(data.trip.estimated_distance_km),
+        };
+        setIncomingTrip((current) => current?.trip_id === trip.trip_id ? current : trip);
+        if (lastNotifiedTripId.current !== trip.trip_id) {
+          lastNotifiedTripId.current = trip.trip_id;
+          playRideRequestAlert();
+        }
+      } catch (error: unknown) {
+        if (!axios.isAxiosError(error) || error.response?.status !== 401) {
+          console.error('Could not poll for incoming ride requests:', error);
+        }
+      } finally {
+        requestInFlight = false;
+      }
+    };
+
+    void refreshIncomingTrip();
+    const interval = window.setInterval(() => void refreshIncomingTrip(), 1_500);
+    return () => window.clearInterval(interval);
+  }, [user, isOnline, activeTrip, playRideRequestAlert]);
+
+  useEffect(() => {
+    if (!user || !isOnline || activeTrip) return;
+
+    const refreshFromNotification = () => {
+      void apiClient.get<{ trip: IncomingTrip | null }>('/rider/incoming')
+        .then(({ data }) => {
+          if (!data.trip) {
+            setIncomingTrip(null);
+            return;
+          }
+
+          const trip = {
+            ...data.trip,
+            pickup_lat: Number(data.trip.pickup_lat),
+            pickup_lng: Number(data.trip.pickup_lng),
+            destination_lat: Number(data.trip.destination_lat),
+            destination_lng: Number(data.trip.destination_lng),
+            estimated_fare: Number(data.trip.estimated_fare),
+            estimated_distance_km: Number(data.trip.estimated_distance_km),
+          };
+          setIncomingTrip(trip);
+        })
+        .catch((error: unknown) => {
+          console.error('Could not refresh incoming trip from notification:', error);
+        });
+    };
+
+    window.addEventListener('keke:trip-notification', refreshFromNotification);
+    return () => window.removeEventListener('keke:trip-notification', refreshFromNotification);
+  }, [user, isOnline, activeTrip]);
 
   const toggleRideAlerts = async () => {
     if (alertsEnabled) {
@@ -412,7 +510,7 @@ const DriverHome = () => {
       const message = axios.isAxiosError<{ message?: string }>(error)
         ? error.response?.data?.message
         : undefined;
-      alert(message || 'Could not update your online status. Please try again.');
+      toast.error(message || 'Could not update your online status. Please try again.');
     }
   };
 
@@ -429,7 +527,7 @@ const DriverHome = () => {
       const message = axios.isAxiosError<{ message?: string }>(error)
         ? error.response?.data?.message
         : undefined;
-      alert(message || 'Failed to accept. Another driver may have taken it.');
+      toast.error(message || 'Failed to accept. Another driver may have taken it.');
       setIncomingTrip(null);
     }
   };
@@ -452,7 +550,13 @@ const DriverHome = () => {
 
     setIsUpdatingTrip(true);
     try {
-      const response = await apiClient.post<{ id: number; status: ActiveTrip['status']; rider_id: number }>(
+      const response = await apiClient.post<{
+        id: number;
+        status: ActiveTrip['status'];
+        rider_id: number;
+        payment_method: string;
+        payment_status: 'pending' | 'collected';
+      }>(
         `/trips/${activeTrip.id}/status`,
         { status: nextStatus },
       );
@@ -460,7 +564,12 @@ const DriverHome = () => {
       if (response.data.status === 'completed') {
         setNavigation(null);
         setNavigationError(null);
-        setActiveTrip(null);
+        setActiveTrip({
+          ...activeTrip,
+          status: 'completed',
+          payment_method: response.data.payment_method,
+          payment_status: response.data.payment_status,
+        });
         apiClient.get<RiderSummary>('/rider/summary')
           .then(({ data }) => {
             setRiderSummary(data);
@@ -470,7 +579,7 @@ const DriverHome = () => {
             console.error('Could not refresh rider trip summary:', error);
             setSummaryError('Trip summary unavailable');
           });
-        alert('Trip completed! Collect the cash fare from the passenger.');
+        toast.success('Trip completed! Collect the fare or check wallet settlement.');
       } else {
         setNavigation(null);
         setNavigationError(null);
@@ -480,10 +589,45 @@ const DriverHome = () => {
       const message = axios.isAxiosError<{ message?: string; errors?: { status?: string[] } }>(error)
         ? error.response?.data?.errors?.status?.[0] || error.response?.data?.message
         : undefined;
-      alert(message || 'Could not update the trip. Please try again.');
+      toast.error(message || 'Could not update the trip. Please try again.');
     } finally {
       setIsUpdatingTrip(false);
     }
+  };
+
+  const markCashCollected = async () => {
+    if (!activeTrip || isUpdatingTrip) return;
+    setIsUpdatingTrip(true);
+    try {
+      const { data } = await apiClient.post<{
+        payment_status: 'collected';
+        payment_collected_at: string;
+      }>(`/trips/${activeTrip.id}/payment/collect`);
+      setActiveTrip({
+        ...activeTrip,
+        payment_status: data.payment_status,
+      });
+      toast.success('Cash payment recorded.');
+      window.setTimeout(() => setActiveTrip(null), 300);
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message
+        : undefined;
+      toast.error(message || 'Could not record the cash payment. Please try again.');
+    } finally {
+      setIsUpdatingTrip(false);
+    }
+  };
+
+  const openExternalNavigation = () => {
+    if (!activeTrip || navigationApp === 'in_app') return;
+    const target = activeTrip.status === 'started'
+      ? { lat: activeTrip.destination_latitude, lng: activeTrip.destination_longitude }
+      : { lat: activeTrip.pickup_latitude, lng: activeTrip.pickup_longitude };
+    const url = navigationApp === 'waze'
+      ? `https://waze.com/ul?ll=${target.lat},${target.lng}&navigate=yes`
+      : `https://www.google.com/maps/dir/?api=1&destination=${target.lat},${target.lng}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const tripAction = activeTrip?.status === 'accepted'
@@ -500,9 +644,13 @@ const DriverHome = () => {
       <div className="absolute top-0 w-full z-[1000] p-4 pt-[calc(env(safe-area-inset-top)+1rem)] bg-gradient-to-b from-white/95 to-transparent pointer-events-none">
         <div className="dashboard-topbar flex justify-between items-center bg-white/95 backdrop-blur-xl p-3 rounded-2xl shadow-lg shadow-slate-900/10 border border-white/80 pointer-events-auto">
           <div className="flex items-center space-x-3">
-            <div className={`dashboard-avatar h-10 w-10 rounded-2xl flex items-center justify-center text-white font-bold transition-colors ${isOnline ? 'bg-emerald-600' : 'bg-slate-500'}`}>
-              {user?.phone?.substring(user.phone.length - 4)}
-            </div>
+            <AccountAvatar
+              name={user?.name}
+              phone={user?.phone}
+              avatarUrl={user?.avatar_url}
+              onChanged={updateAvatar}
+              online={isOnline}
+            />
             <div>
               <p className="text-sm font-bold tracking-tight text-slate-900">Rider dashboard</p>
               <p className={`text-xs ${isOnline ? 'text-green-600' : 'text-gray-500'}`}>
@@ -535,9 +683,7 @@ const DriverHome = () => {
               {alertsEnabled ? 'Alerts on' : 'Enable alerts'}
             </button>
             <TripHistory />
-            <button onClick={logout} className="dashboard-logout rounded-xl bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-800 transition hover:bg-orange-100">
-              Logout
-            </button>
+            <SettingsMenu role="rider" />
           </div>
         </div>
       </div>
@@ -636,15 +782,36 @@ const DriverHome = () => {
                 </div>
               )}
               {navigationError && <p className="mb-2 text-xs text-red-600" role="alert">{navigationError}</p>}
+              {navigationApp !== 'in_app' && (
+                <button
+                  type="button"
+                  onClick={openExternalNavigation}
+                  className="mb-3 w-full rounded-xl border border-blue-200 bg-blue-50 px-3 py-3 text-sm font-bold text-blue-800"
+                >
+                  Open in {navigationApp === 'waze' ? 'Waze' : 'Google Maps'}
+                </button>
+              )}
               <h3 className="text-lg font-bold text-gray-900 mb-1">
-                {activeTrip.status === 'accepted'
+                {activeTrip.status === 'completed'
+                  ? 'Trip Completed'
+                  : activeTrip.status === 'accepted'
                   ? 'Pick up Passenger'
                   : activeTrip.status === 'arrived'
                     ? 'Waiting for Passenger'
                     : 'Trip in Progress'}
               </h3>
               <p className="text-sm text-gray-500 mb-4">{activeTrip.landmark_note || 'Head to pickup location'}</p>
-              {tripAction && (
+              {activeTrip.status === 'completed' && activeTrip.payment_method === 'cash' ? (
+                <button
+                  onClick={() => void markCashCollected()}
+                  disabled={isUpdatingTrip || activeTrip.payment_status === 'collected'}
+                  className="w-full bg-brand text-slate-950 font-bold py-4 rounded-xl shadow-md shadow-amber-500/20 disabled:opacity-70"
+                >
+                  {activeTrip.payment_status === 'collected'
+                    ? 'Cash Collected'
+                    : isUpdatingTrip ? 'Recording...' : 'Confirm Cash Collected'}
+                </button>
+              ) : tripAction && (
                 <button
                   onClick={advanceTrip}
                   disabled={isUpdatingTrip}

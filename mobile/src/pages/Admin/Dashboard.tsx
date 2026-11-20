@@ -21,7 +21,17 @@ interface AdminDashboardData {
 type ActiveTripStatus = 'searching' | 'accepted' | 'arrived' | 'started';
 type ActiveTripFilter = 'all' | ActiveTripStatus;
 type AdminRole = 'super_admin' | 'operations' | 'support';
-type AdminSection = 'overview' | 'live-trips' | 'incidents' | 'rider-review' | 'accounts' | 'recent-trips' | 'audit-log' | 'staff-access' | 'reports';
+type AdminCategory = 'all' | 'operations' | 'safety' | 'users' | 'governance';
+type AdminSection =
+  | 'overview'
+  | 'live-trips'
+  | 'recent-trips'
+  | 'incidents'
+  | 'rider-review'
+  | 'accounts'
+  | 'reports'
+  | 'audit-log'
+  | 'staff-access';
 
 interface ActiveTrip {
   id: number;
@@ -90,23 +100,99 @@ interface AdminUsersResponse {
   total: number;
 }
 
-const errorMessage = (error: unknown, fallback: string) => (
+interface SectionMeta {
+  id: AdminSection;
+  label: string;
+  description: string;
+  category: 'operations' | 'safety' | 'users' | 'governance';
+  icon: string;
+}
+
+const errorMessage = (error: unknown, fallback: string) =>
   axios.isAxiosError<{ message?: string }>(error)
     ? error.response?.data?.message || fallback
-    : fallback
-);
+    : fallback;
 
 const activeTripFilters: ActiveTripFilter[] = ['all', 'searching', 'accepted', 'arrived', 'started'];
-const adminSections: { id: AdminSection; label: string; description: string }[] = [
-  { id: 'overview', label: 'Overview', description: 'Platform metrics' },
-  { id: 'live-trips', label: 'Live trips', description: 'Monitor active rides' },
-  { id: 'incidents', label: 'Incidents', description: 'Review and resolve reports' },
-  { id: 'rider-review', label: 'Rider verification', description: 'Review applications' },
-  { id: 'accounts', label: 'Accounts', description: 'Manage passengers and riders' },
-  { id: 'recent-trips', label: 'Recent trips', description: 'Review trip activity' },
-  { id: 'audit-log', label: 'Audit log', description: 'Review admin actions' },
-  { id: 'staff-access', label: 'Staff access', description: 'Manage administrator roles' },
-  { id: 'reports', label: 'Reports', description: 'Review operational performance' },
+
+const categoryMeta: Record<'operations' | 'safety' | 'users' | 'governance', { name: string; tag: string }> = {
+  operations: { name: 'Operations & Fleet', tag: 'Live Monitoring' },
+  safety: { name: 'Trust & Safety', tag: 'Vetting & Incidents' },
+  users: { name: 'User Management', tag: 'Directory' },
+  governance: { name: 'Governance & Analytics', tag: 'Reports & Audits' },
+};
+
+const adminSections: SectionMeta[] = [
+  // 1. Operations & Fleet
+  {
+    id: 'overview',
+    label: 'Overview',
+    description: 'KPI metrics & operational alerts',
+    category: 'operations',
+    icon: '📊',
+  },
+  {
+    id: 'live-trips',
+    label: 'Live Trips',
+    description: 'Real-time active ride monitoring',
+    category: 'operations',
+    icon: '🚖',
+  },
+  {
+    id: 'recent-trips',
+    label: 'Recent Trips',
+    description: 'Completed rides and activity logs',
+    category: 'operations',
+    icon: '🕒',
+  },
+
+  // 2. Trust & Safety
+  {
+    id: 'incidents',
+    label: 'Incidents',
+    description: 'Review and resolve safety reports',
+    category: 'safety',
+    icon: '🛡️',
+  },
+  {
+    id: 'rider-review',
+    label: 'Rider Verification',
+    description: 'Review driver licenses & Ghana cards',
+    category: 'safety',
+    icon: '🪪',
+  },
+
+  // 3. User Management
+  {
+    id: 'accounts',
+    label: 'Accounts',
+    description: 'Search, create & manage user accounts',
+    category: 'users',
+    icon: '👥',
+  },
+
+  // 4. Governance & Analytics
+  {
+    id: 'reports',
+    label: 'Reports',
+    description: 'Operational & financial analytics',
+    category: 'governance',
+    icon: '📈',
+  },
+  {
+    id: 'audit-log',
+    label: 'Audit Log',
+    description: 'System-wide administrative action logs',
+    category: 'governance',
+    icon: '🔒',
+  },
+  {
+    id: 'staff-access',
+    label: 'Staff Access',
+    description: 'Administrator roles and permissions',
+    category: 'governance',
+    icon: '🔑',
+  },
 ];
 
 const sectionsByRole: Record<AdminRole, AdminSection[]> = {
@@ -120,7 +206,7 @@ const sectionsByRole: Record<AdminRole, AdminSection[]> = {
 const getSectionFromUrl = (availableSections: AdminSection[]): AdminSection => {
   const section = new URLSearchParams(window.location.search).get('section');
   return availableSections.some((item) => item === section)
-    ? section as AdminSection
+    ? (section as AdminSection)
     : availableSections[0];
 };
 
@@ -136,9 +222,8 @@ const formatElapsed = (date: string, now: number) => {
   return remainingMinutes ? `${hours} hr ${remainingMinutes} min ago` : `${hours} hr ago`;
 };
 
-const formatCoordinate = (latitude: number, longitude: number) => (
-  `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
-);
+const formatCoordinate = (latitude: number, longitude: number) =>
+  `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -170,19 +255,23 @@ const AdminDashboard = () => {
   const [activeTripFilter, setActiveTripFilter] = useState<ActiveTripFilter>('all');
   const [clock, setClock] = useState(0);
   const [reportIncidentTripId, setReportIncidentTripId] = useState<number | null>(null);
+  const [activeCategory, setActiveCategory] = useState<AdminCategory>('all');
   const [activeSection, setActiveSection] = useState<AdminSection>(() => getSectionFromUrl(availableSections));
   const accountFilters = useRef({ search: '', role: 'all' as 'all' | 'passenger' | 'rider' });
 
-  const selectSection = useCallback((section: AdminSection) => {
-    if (!availableSections.includes(section)) return;
-    if (section === activeSection) return;
-    const url = new URL(window.location.href);
-    url.searchParams.set('section', section);
-    window.history.pushState({ adminSection: section }, '', `${url.pathname}${url.search}${url.hash}`);
-    setActiveSection(section);
-    setIsLoading(false);
-    setError(null);
-  }, [activeSection, availableSections]);
+  const selectSection = useCallback(
+    (section: AdminSection) => {
+      if (!availableSections.includes(section)) return;
+      if (section === activeSection) return;
+      const url = new URL(window.location.href);
+      url.searchParams.set('section', section);
+      window.history.pushState({ adminSection: section }, '', `${url.pathname}${url.search}${url.hash}`);
+      setActiveSection(section);
+      setIsLoading(false);
+      setError(null);
+    },
+    [activeSection, availableSections],
+  );
 
   const loadActiveTrips = useCallback(async (signal?: AbortSignal) => {
     setActiveTripsLoading(true);
@@ -298,28 +387,26 @@ const AdminDashboard = () => {
     };
   }, []);
 
-  const loadAccounts = useCallback(async (
-    page: number,
-    search: string,
-    role: 'all' | 'passenger' | 'rider',
-    signal?: AbortSignal,
-  ) => {
-    setAccountError(null);
-    try {
-      const { data } = await apiClient.get<AdminUsersResponse>('/admin/users', {
-        params: {
-          page,
-          q: search.trim() || undefined,
-          role: role === 'all' ? undefined : role,
-        },
-        signal,
-      });
-      setAccounts(data);
-      setAccountPage(data.current_page);
-    } catch (requestError: unknown) {
-      if (!signal?.aborted) setAccountError(errorMessage(requestError, 'Could not load accounts.'));
-    }
-  }, []);
+  const loadAccounts = useCallback(
+    async (page: number, search: string, role: 'all' | 'passenger' | 'rider', signal?: AbortSignal) => {
+      setAccountError(null);
+      try {
+        const { data } = await apiClient.get<AdminUsersResponse>('/admin/users', {
+          params: {
+            page,
+            q: search.trim() || undefined,
+            role: role === 'all' ? undefined : role,
+          },
+          signal,
+        });
+        setAccounts(data);
+        setAccountPage(data.current_page);
+      } catch (requestError: unknown) {
+        if (!signal?.aborted) setAccountError(errorMessage(requestError, 'Could not load accounts.'));
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     accountFilters.current = { search: accountSearch, role: accountRole };
@@ -355,9 +442,7 @@ const AdminDashboard = () => {
       const responseData = axios.isAxiosError<{ errors?: Record<string, string[]> }>(requestError)
         ? requestError.response?.data
         : undefined;
-      const validationMessage = responseData?.errors
-        ? Object.values(responseData.errors).flat()[0]
-        : undefined;
+      const validationMessage = responseData?.errors ? Object.values(responseData.errors).flat()[0] : undefined;
       setAccountError(validationMessage || errorMessage(requestError, 'Could not create the account.'));
     } finally {
       setIsCreatingAccount(false);
@@ -374,13 +459,17 @@ const AdminDashboard = () => {
       await apiClient.post(`/admin/riders/${profile.user_id}/review`, { status });
       setPendingRiders((current) => current.filter((rider) => rider.id !== profile.id));
       setActionError(null);
-      setDashboard((current) => current ? {
-        ...current,
-        stats: {
-          ...current.stats,
-          pending_rider_profiles: Math.max(0, current.stats.pending_rider_profiles - 1),
-        },
-      } : current);
+      setDashboard((current) =>
+        current
+          ? {
+              ...current,
+              stats: {
+                ...current.stats,
+                pending_rider_profiles: Math.max(0, current.stats.pending_rider_profiles - 1),
+              },
+            }
+          : current,
+      );
     } catch (requestError: unknown) {
       setActionError(errorMessage(requestError, `Could not ${action} this rider application.`));
     } finally {
@@ -408,9 +497,7 @@ const AdminDashboard = () => {
       const responseData = axios.isAxiosError<{ errors?: Record<string, string[]> }>(requestError)
         ? requestError.response?.data
         : undefined;
-      const validationMessage = responseData?.errors
-        ? Object.values(responseData.errors).flat()[0]
-        : undefined;
+      const validationMessage = responseData?.errors ? Object.values(responseData.errors).flat()[0] : undefined;
       setAccountError(validationMessage || errorMessage(requestError, 'Could not suspend this account.'));
     } finally {
       setIsUpdatingSuspension(false);
@@ -437,648 +524,853 @@ const AdminDashboard = () => {
     }
   };
 
-  const statCards = dashboard ? [
-    { label: 'Passengers', value: dashboard.stats.passengers },
-    { label: 'Riders', value: dashboard.stats.riders },
-    { label: 'Pending reviews', value: dashboard.stats.pending_rider_profiles },
-    { label: 'Trips today', value: dashboard.stats.trips_today },
-    { label: 'Completed trips', value: dashboard.stats.completed_trips },
-  ] : [];
-  const visibleActiveTrips = activeTripFilter === 'all'
-    ? activeTrips
-    : activeTrips.filter((trip) => trip.status === activeTripFilter);
+  const statCards = dashboard
+    ? [
+        { label: 'Registered Passengers', value: dashboard.stats.passengers, icon: '🚶' },
+        { label: 'Registered Riders', value: dashboard.stats.riders, icon: '🛵' },
+        { label: 'Trips Today', value: dashboard.stats.trips_today, icon: '📅' },
+        { label: 'Completed Trips', value: dashboard.stats.completed_trips, icon: '🏁' },
+      ]
+    : [];
+
+  const visibleActiveTrips =
+    activeTripFilter === 'all'
+      ? activeTrips
+      : activeTrips.filter((trip) => trip.status === activeTripFilter);
+
   const selectedSection = adminSections.find((section) => section.id === activeSection) ?? adminSections[0];
 
+  const getSectionBadge = (sectionId: AdminSection) => {
+    if (sectionId === 'live-trips') return activeTrips.length;
+    if (sectionId === 'incidents') return dashboard?.stats.open_incidents;
+    if (sectionId === 'rider-review') return dashboard?.stats.pending_rider_profiles;
+    return undefined;
+  };
+
+  // Group sections by category for orderly presentation
+  const groupedSections = (['operations', 'safety', 'users', 'governance'] as const).map((catKey) => {
+    const items = adminSections.filter(
+      (sec) => sec.category === catKey && availableSections.includes(sec.id),
+    );
+    return {
+      category: catKey,
+      meta: categoryMeta[catKey],
+      sections: items,
+    };
+  }).filter((group) => group.sections.length > 0);
+
+  const filteredSections = activeCategory === 'all'
+    ? adminSections.filter((sec) => availableSections.includes(sec.id))
+    : adminSections.filter((sec) => sec.category === activeCategory && availableSections.includes(sec.id));
+
   return (
-    <div className="dashboard-shell admin-dashboard min-h-screen bg-slate-50 text-slate-900">
-      <header className="admin-header border-b border-slate-800 bg-slate-900 text-white shadow-lg shadow-slate-900/10">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-300">Keke Ride · Operations</p>
-            <h1 className="mt-1 text-xl font-bold tracking-tight">Admin dashboard</h1>
-            <p className="text-sm text-slate-300">{user?.phone}</p>
-          </div>
+    <div className="dashboard-shell admin-dashboard min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans">
+      {/* Top Header Bar */}
+      <header className="admin-header sticky top-0 z-30 border-b border-slate-800 bg-slate-950 text-white shadow-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            {activeSection !== 'incidents' && activeSection !== 'audit-log' && <button
-              type="button"
-              onClick={() => {
-                if (activeSection === 'overview') void loadDashboard();
-                if (activeSection === 'live-trips') void loadActiveTrips();
-                if (activeSection === 'rider-review') void loadPendingRiders();
-                if (activeSection === 'accounts') void loadAccounts(1, accountSearch, accountRole);
-                if (activeSection === 'recent-trips') void loadRecentTrips();
-              }}
-              disabled={isLoading}
-              className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/15 disabled:opacity-50"
-            >
-              Refresh
-            </button>}
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400 text-slate-950 font-black text-lg shadow">
+              KR
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-widest text-amber-400">KEKE RIDE</span>
+                <span className="rounded-md bg-slate-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-300 border border-slate-700">
+                  {adminRole.replace('_', ' ')}
+                </span>
+                <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400 border border-emerald-500/30">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Live System
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5 font-mono">{user?.phone || 'Admin Operations'}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {activeSection !== 'incidents' && activeSection !== 'audit-log' && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeSection === 'overview') void loadDashboard();
+                  if (activeSection === 'live-trips') void loadActiveTrips();
+                  if (activeSection === 'rider-review') void loadPendingRiders();
+                  if (activeSection === 'accounts') void loadAccounts(1, accountSearch, accountRole);
+                  if (activeSection === 'recent-trips') void loadRecentTrips();
+                }}
+                disabled={isLoading}
+                className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-800 disabled:opacity-50"
+              >
+                <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh
+              </button>
+            )}
             <button
               type="button"
               onClick={logout}
-              className="admin-logout rounded-xl bg-orange-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-orange-600"
+              className="rounded-xl bg-red-600/90 hover:bg-red-600 px-3 py-1.5 text-xs font-bold text-white transition active:scale-95"
             >
-              Logout
+              Sign out
             </button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-        <nav className="admin-feature-menu" aria-label="Admin features">
-          {availableSections.map((sectionId) => {
-            const section = adminSections.find((item) => item.id === sectionId) ?? adminSections[0];
-            const badge = section.id === 'live-trips'
-              ? activeTrips.length
-              : section.id === 'incidents'
-                ? dashboard?.stats.open_incidents
-                : section.id === 'rider-review'
-                  ? dashboard?.stats.pending_rider_profiles
-                  : undefined;
-            return (
-              <button
-                key={section.id}
-                type="button"
-                aria-current={activeSection === section.id ? 'page' : undefined}
-                onClick={() => selectSection(section.id)}
-                className={`admin-feature-menu-item ${activeSection === section.id ? 'is-selected' : ''}`}
-              >
-                <span className="admin-feature-menu-copy">
-                  <span className="admin-feature-menu-label">{section.label}</span>
-                  <span className="admin-feature-menu-description">{section.description}</span>
-                </span>
-                {badge !== undefined && badge > 0 && (
-                  <span className="admin-feature-menu-badge">{badge}</span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="admin-section-heading">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-800">Admin workspace</p>
-            <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">{selectedSection.label}</h2>
-            <p className="mt-1 text-sm text-slate-600">{selectedSection.description}</p>
+      {/* Main Container */}
+      <main className="mx-auto w-full max-w-7xl flex-1 space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+        {/* Category Filter Navigation Bar */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Feature Categories:</span>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {(
+                [
+                  { id: 'all', label: 'All Modules' },
+                  { id: 'operations', label: 'Operations & Fleet' },
+                  { id: 'safety', label: 'Trust & Safety' },
+                  { id: 'users', label: 'User Directory' },
+                  { id: 'governance', label: 'Governance' },
+                ] as const
+              ).map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-bold transition ${
+                    activeCategory === cat.id
+                      ? 'bg-slate-900 text-amber-300 shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
           </div>
-          {isLoading && <span className="text-sm text-slate-500" role="status">Loading…</span>}
+
+          {/* Orderly Feature Menu Grid */}
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {filteredSections.map((section) => {
+              const isSelected = activeSection === section.id;
+              const badge = getSectionBadge(section.id);
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => selectSection(section.id)}
+                  className={`flex flex-col justify-between rounded-xl border p-2.5 text-left transition ${
+                    isSelected
+                      ? 'border-emerald-600 bg-emerald-50/70 shadow-sm ring-1 ring-emerald-500'
+                      : 'border-slate-200 bg-slate-50 hover:bg-white hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-xl">{section.icon}</span>
+                    {badge !== undefined && badge > 0 && (
+                      <span className="rounded-full bg-amber-400 px-1.5 py-0.2 text-[10px] font-black text-slate-950 shadow-sm">
+                        {badge}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-2">
+                    <p className={`text-xs font-bold leading-tight ${isSelected ? 'text-emerald-950 font-black' : 'text-slate-900'}`}>
+                      {section.label}
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-slate-500 line-clamp-1">{section.description}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
+        {/* Section Heading & Breadcrumb */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-extrabold uppercase tracking-widest text-emerald-800">
+                {categoryMeta[selectedSection.category].name}
+              </span>
+              <span className="text-slate-400">/</span>
+              <span className="text-xs font-semibold text-slate-500">{categoryMeta[selectedSection.category].tag}</span>
+            </div>
+            <h2 className="mt-1 text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              <span>{selectedSection.icon}</span>
+              <span>{selectedSection.label}</span>
+            </h2>
+            <p className="text-xs text-slate-600 mt-0.5">{selectedSection.description}</p>
+          </div>
+          {isLoading && (
+            <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 animate-pulse">
+              Refreshing data…
+            </span>
+          )}
+        </div>
+
+        {/* Global Error Banner */}
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-center justify-between" role="alert">
             <p>{error}</p>
-            <button type="button" onClick={() => void loadDashboard()} className="mt-2 font-semibold underline">
+            <button type="button" onClick={() => void loadDashboard()} className="font-bold underline text-xs ml-3">
               Try again
             </button>
           </div>
         )}
         {actionError && (
-          <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">
             {actionError}
-          </p>
+          </div>
         )}
 
-        {activeSection === 'live-trips' && (
-        <section className="active-trips-panel rounded-2xl border border-slate-200/80 bg-white p-4 shadow-md shadow-slate-900/5 sm:p-6" aria-labelledby="active-trips-title">
-          <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 id="active-trips-title" className="text-lg font-bold tracking-tight">Live trip operations</h2>
-                <span className="active-trips-count rounded-full px-2.5 py-1 text-xs font-bold">
-                  {activeTrips.length} active
+        {/* 1. OVERVIEW SECTION */}
+        {activeSection === 'overview' && (
+          <div className="space-y-6">
+            {/* Urgent Operations Alerts Bar */}
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Operations Attention Center</h3>
+                  <p className="text-xs text-slate-500">Live queues requiring review, triage or verification</p>
+                </div>
+                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700">
+                  Real-time Queue
                 </span>
               </div>
-              <p className="mt-1 text-sm text-slate-500">
-                Monitor active rides and the rider’s latest reported location.
-                {activeTripsUpdatedAt !== null && ` Updated ${formatElapsed(new Date(activeTripsUpdatedAt).toISOString(), clock).replace(' ago', '')}.`}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => void loadActiveTrips()}
-              disabled={activeTripsLoading}
-              className="active-trips-refresh rounded-xl border px-3 py-2 text-sm font-semibold transition disabled:opacity-50"
-            >
-              {activeTripsLoading ? 'Refreshing…' : 'Refresh trips'}
-            </button>
-          </div>
 
-          <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter active trips by status">
-            {activeTripFilters.map((filter) => {
-              const count = filter === 'all'
-                ? activeTrips.length
-                : activeTrips.filter((trip) => trip.status === filter).length;
-              return (
-                <button
-                  key={filter}
-                  type="button"
-                  aria-pressed={activeTripFilter === filter}
-                  onClick={() => setActiveTripFilter(filter)}
-                  className={`active-trip-filter rounded-full border px-3 py-1.5 text-xs font-semibold capitalize transition ${activeTripFilter === filter ? 'is-selected' : ''}`}
-                >
-                  {filter === 'all' ? 'All trips' : filter} <span>{count}</span>
-                </button>
-              );
-            })}
-          </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                {/* Live Trips Card */}
+                <article className="flex flex-col justify-between rounded-xl border border-slate-200 bg-blue-50/50 p-4">
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-blue-800">Live Active Trips</span>
+                    <p className="mt-1 text-3xl font-black text-blue-950">{activeTrips.length}</p>
+                    <p className="mt-1 text-xs text-blue-700">Rides currently in searching, transit, or arriving.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => selectSection('live-trips')}
+                    className="mt-3 flex items-center gap-1 text-xs font-bold text-blue-900 hover:underline"
+                  >
+                    Open Live Radar →
+                  </button>
+                </article>
 
-          {activeTripsError && (
-            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">
-              <p>{activeTripsError}</p>
-              <button type="button" onClick={() => void loadActiveTrips()} className="mt-2 font-semibold underline">
-                Retry
+                {/* Open Incidents Card */}
+                <article className={`flex flex-col justify-between rounded-xl border p-4 ${
+                  dashboard?.stats.open_incidents
+                    ? 'border-red-200 bg-red-50/70 text-red-950'
+                    : 'border-slate-200 bg-emerald-50/50 text-emerald-950'
+                }`}>
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider">Open Incidents</span>
+                    <p className="mt-1 text-3xl font-black">{dashboard?.stats.open_incidents ?? 0}</p>
+                    <p className="mt-1 text-xs opacity-80">
+                      {dashboard?.stats.open_incidents
+                        ? 'Safety issues, disputes, or missing items reported.'
+                        : 'No outstanding incident reports.'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => selectSection('incidents')}
+                    className="mt-3 flex items-center gap-1 text-xs font-bold hover:underline"
+                  >
+                    Manage Incidents →
+                  </button>
+                </article>
+
+                {/* Pending Rider Reviews */}
+                <article className={`flex flex-col justify-between rounded-xl border p-4 ${
+                  dashboard?.stats.pending_rider_profiles
+                    ? 'border-amber-200 bg-amber-50/70 text-amber-950'
+                    : 'border-slate-200 bg-slate-50 text-slate-800'
+                }`}>
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider">Pending Driver Vetting</span>
+                    <p className="mt-1 text-3xl font-black">{dashboard?.stats.pending_rider_profiles ?? 0}</p>
+                    <p className="mt-1 text-xs opacity-80">
+                      {dashboard?.stats.pending_rider_profiles
+                        ? 'Submitted Ghana cards & licenses waiting for review.'
+                        : 'All rider applications are verified.'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => selectSection('rider-review')}
+                    className="mt-3 flex items-center gap-1 text-xs font-bold hover:underline"
+                  >
+                    Review Applications →
+                  </button>
+                </article>
+              </div>
+            </section>
+
+            {/* Platform KPI Stats Grid */}
+            <section className="space-y-3">
+              <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Platform Performance Metrics</h3>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {statCards.map((card) => (
+                  <article key={card.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold text-slate-500">{card.label}</p>
+                      <span className="text-lg">{card.icon}</span>
+                    </div>
+                    <p className="mt-2 text-3xl font-black text-slate-900">{card.value.toLocaleString()}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            {/* Quick Operations Matrix */}
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-3">
+              <h3 className="font-bold text-slate-900 text-base">Quick Operations Matrix</h3>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {groupedSections.map((grp) => (
+                  <div key={grp.category} className="rounded-xl border border-slate-100 bg-slate-50/80 p-3 space-y-2">
+                    <p className="text-[11px] font-black uppercase tracking-wider text-slate-500">{grp.meta.name}</p>
+                    <div className="space-y-1">
+                      {grp.sections.map((sec) => (
+                        <button
+                          key={sec.id}
+                          type="button"
+                          onClick={() => selectSection(sec.id)}
+                          className="flex w-full items-center justify-between rounded-lg p-2 text-left text-xs font-bold text-slate-800 hover:bg-white hover:shadow-xs transition"
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <span>{sec.icon}</span>
+                            <span>{sec.label}</span>
+                          </span>
+                          <span className="text-slate-400">›</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* 2. LIVE TRIPS SECTION */}
+        {activeSection === 'live-trips' && (
+          <section className="active-trips-panel rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6" aria-labelledby="active-trips-title">
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 id="active-trips-title" className="text-lg font-bold tracking-tight text-slate-900">Live Trip Radar</h3>
+                  <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-800">
+                    {activeTrips.length} active
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  Real-time telemetry and rider coordinates across Cape Coast.
+                  {activeTripsUpdatedAt !== null && ` Updated ${formatElapsed(new Date(activeTripsUpdatedAt).toISOString(), clock).replace(' ago', '')}.`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void loadActiveTrips()}
+                disabled={activeTripsLoading}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                {activeTripsLoading ? 'Refreshing…' : 'Refresh Telemetry'}
               </button>
             </div>
-          )}
 
-          {activeTripsLoading && activeTrips.length === 0 ? (
-            <p className="rounded-xl bg-slate-50 p-5 text-center text-sm text-slate-500" role="status">
-              Loading active trips…
-            </p>
-          ) : visibleActiveTrips.length === 0 ? (
-            <p className="active-trips-empty rounded-xl p-6 text-center text-sm">
-              {activeTrips.length === 0
-                ? 'There are no active trips right now. This list refreshes automatically.'
-                : `No active trips with status “${activeTripFilter}”.`}
-            </p>
-          ) : (
-            <div className="grid gap-4 xl:grid-cols-2">
-              {visibleActiveTrips.map((trip) => {
-                const locationAge = trip.rider_location
-                  ? formatElapsed(trip.rider_location.updated_at, clock)
-                  : null;
-                const locationIsStale = trip.rider_location
-                  && clock - new Date(trip.rider_location.updated_at).getTime() > 120_000;
-                const riderLabel = trip.rider?.name || trip.rider?.phone || 'Waiting for rider';
-                const pickupLabel = trip.pickup_location || trip.landmark_note || 'Pickup pin';
-                const destinationLabel = trip.destination_location || 'Destination pin';
+            <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter active trips by status">
+              {activeTripFilters.map((filter) => {
+                const count = filter === 'all'
+                  ? activeTrips.length
+                  : activeTrips.filter((trip) => trip.status === filter).length;
                 return (
-                  <article key={trip.id} className="active-trip-card rounded-2xl border p-4 sm:p-5">
-                    <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Trip #{trip.id}</p>
-                        <p className="mt-1 text-xs text-slate-500">Started {formatElapsed(trip.created_at, clock)}</p>
-                      </div>
-                      <span className={`active-trip-status status-${trip.status} rounded-full px-3 py-1 text-xs font-bold capitalize`}>
-                        {trip.status}
-                      </span>
-                    </div>
+                  <button
+                    key={filter}
+                    type="button"
+                    aria-pressed={activeTripFilter === filter}
+                    onClick={() => setActiveTripFilter(filter)}
+                    className={`rounded-full border px-3 py-1 text-xs font-bold capitalize transition ${
+                      activeTripFilter === filter
+                        ? 'border-slate-900 bg-slate-900 text-white'
+                        : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white'
+                    }`}
+                  >
+                    {filter === 'all' ? 'All Active' : filter} ({count})
+                  </button>
+                );
+              })}
+            </div>
 
-                    <div className="active-trip-route mb-4 grid gap-3 rounded-xl p-3 sm:grid-cols-2">
-                      <div>
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Pickup</p>
-                        <p className="mt-1 text-sm font-semibold">{pickupLabel}</p>
-                        {trip.landmark_note && trip.pickup_location && (
-                          <p className="mt-1 text-xs text-slate-500">{trip.landmark_note}</p>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Destination</p>
-                        <p className="mt-1 text-sm font-semibold">{destinationLabel}</p>
-                      </div>
-                    </div>
+            {activeTripsError && (
+              <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-700" role="alert">
+                <p>{activeTripsError}</p>
+                <button type="button" onClick={() => void loadActiveTrips()} className="mt-2 font-bold underline">
+                  Retry
+                </button>
+              </div>
+            )}
 
-                    <div className="grid gap-3 text-sm sm:grid-cols-2">
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500">Passenger</p>
-                        <p className="mt-1 font-semibold">{trip.passenger.name || 'Passenger'}</p>
-                        <p className="text-xs text-slate-600">{trip.passenger.phone || 'Phone unavailable'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500">Assigned rider</p>
-                        <p className="mt-1 font-semibold">{riderLabel}</p>
-                        {trip.rider?.phone && trip.rider.name && (
-                          <p className="text-xs text-slate-600">{trip.rider.phone}</p>
-                        )}
-                        {trip.rider?.plate_number && (
-                          <p className="text-xs text-slate-600">Plate {trip.rider.plate_number}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className={`active-trip-location mt-4 rounded-xl border p-3 ${locationIsStale ? 'is-stale' : ''}`}>
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-xs font-bold uppercase tracking-wide">Rider location</p>
-                        <span className="text-xs font-semibold">
-                          {!trip.rider
-                            ? 'Not assigned yet'
-                            : !trip.rider_location
-                              ? 'No location reported'
-                              : locationIsStale
-                                ? `Last update ${locationAge} · stale`
-                                : `Updated ${locationAge}`}
+            {activeTripsLoading && activeTrips.length === 0 ? (
+              <p className="rounded-xl bg-slate-50 p-8 text-center text-xs text-slate-500" role="status">
+                Loading active trip telemetry…
+              </p>
+            ) : visibleActiveTrips.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-xs text-slate-500">
+                {activeTrips.length === 0
+                  ? 'There are no active trips right now. This list refreshes automatically.'
+                  : `No active trips with status "${activeTripFilter}".`}
+              </p>
+            ) : (
+              <div className="grid gap-4 xl:grid-cols-2">
+                {visibleActiveTrips.map((trip) => {
+                  const locationAge = trip.rider_location
+                    ? formatElapsed(trip.rider_location.updated_at, clock)
+                    : null;
+                  const locationIsStale =
+                    trip.rider_location && clock - new Date(trip.rider_location.updated_at).getTime() > 120_000;
+                  const riderLabel = trip.rider?.name || trip.rider?.phone || 'Waiting for rider';
+                  const pickupLabel = trip.pickup_location || trip.landmark_note || 'Pickup pin';
+                  const destinationLabel = trip.destination_location || 'Destination pin';
+                  return (
+                    <article key={trip.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+                      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-2.5">
+                        <div>
+                          <span className="text-xs font-black uppercase text-slate-400">TRIP #{trip.id}</span>
+                          <p className="text-[11px] text-slate-500">Started {formatElapsed(trip.created_at, clock)}</p>
+                        </div>
+                        <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                          trip.status === 'started'
+                            ? 'bg-blue-100 text-blue-800'
+                            : trip.status === 'arrived'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {trip.status}
                         </span>
                       </div>
-                      {trip.rider_location && (
-                        <p className="mt-1 text-xs">
-                          {formatCoordinate(trip.rider_location.latitude, trip.rider_location.longitude)}
-                        </p>
-                      )}
-                    </div>
 
-                    <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-3 text-xs text-slate-500">
-                      <span>{trip.estimated_distance_km.toFixed(1)} km estimated</span>
-                      <div className="flex items-center gap-3">
-                        <span className="font-bold text-slate-800">₵{trip.estimated_fare.toFixed(2)}</span>
+                      <div className="grid gap-2 rounded-xl bg-slate-50 p-3 sm:grid-cols-2 text-xs">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Pickup</p>
+                          <p className="mt-0.5 font-bold text-slate-900">{pickupLabel}</p>
+                          {trip.landmark_note && trip.pickup_location && (
+                            <p className="mt-0.5 text-[11px] text-slate-500">Note: {trip.landmark_note}</p>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Destination</p>
+                          <p className="mt-0.5 font-bold text-slate-900">{destinationLabel}</p>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 text-xs sm:grid-cols-2">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Passenger</p>
+                          <p className="mt-0.5 font-bold text-slate-900">{trip.passenger.name || 'Passenger'}</p>
+                          <p className="text-[11px] text-slate-600 font-mono">{trip.passenger.phone || 'Phone unavailable'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Driver</p>
+                          <p className="mt-0.5 font-bold text-slate-900">{riderLabel}</p>
+                          {trip.rider?.phone && (
+                            <p className="text-[11px] text-slate-600 font-mono">{trip.rider.phone} {trip.rider?.plate_number ? `· ${trip.rider.plate_number}` : ''}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className={`rounded-xl border p-2.5 text-xs ${locationIsStale ? 'border-amber-200 bg-amber-50' : 'border-slate-100 bg-slate-50'}`}>
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-bold text-slate-700">Rider Telemetry</span>
+                          <span className="text-slate-500">
+                            {!trip.rider
+                              ? 'Not assigned'
+                              : !trip.rider_location
+                                ? 'No telemetry reported'
+                                : locationIsStale
+                                  ? `Last seen ${locationAge} (stale)`
+                                  : `Active · ${locationAge}`}
+                          </span>
+                        </div>
+                        {trip.rider_location && (
+                          <p className="mt-1 font-mono text-[11px] text-slate-600">
+                            {formatCoordinate(trip.rider_location.latitude, trip.rider_location.longitude)}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between border-t border-slate-100 pt-2.5 text-xs text-slate-500">
+                        <span>{trip.estimated_distance_km.toFixed(1)} km · <strong>₵{trip.estimated_fare.toFixed(2)}</strong></span>
                         <button
                           type="button"
                           onClick={() => {
                             setReportIncidentTripId(trip.id);
                             selectSection('incidents');
                           }}
-                          className="incident-flag-link font-semibold"
+                          className="font-bold text-red-600 hover:underline"
                         >
-                          Flag trip
+                          Flag Trip Incident →
                         </button>
                       </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* 3. SUB-COMPONENTS */}
+        {activeSection === 'incidents' && (
+          <IncidentManagement
+            reportTripId={reportIncidentTripId}
+            onReportHandled={() => setReportIncidentTripId(null)}
+            canCreateIncidents={adminRole !== 'support'}
+            canAddNotes
+            canResolveIncidents={adminRole !== 'support'}
+          />
+        )}
+
+        {activeSection === 'rider-review' && (
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Rider Verification & Onboarding</h3>
+                <p className="text-xs text-slate-500">Inspect Ghana cards and driving licenses before drivers can take trips.</p>
+              </div>
+              <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-900">
+                {pendingRiders.length} pending
+              </span>
+            </div>
+
+            {pendingRiders.length === 0 ? (
+              <p className="rounded-xl bg-slate-50 p-8 text-center text-xs text-slate-500">
+                {isLoading ? 'Loading rider applications…' : 'No driver applications currently pending review.'}
+              </p>
+            ) : (
+              <div className="grid gap-4 lg:grid-cols-2">
+                {pendingRiders.map((rider) => (
+                  <article key={rider.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-sm">{rider.name}</h4>
+                        <p className="text-xs text-slate-600 font-mono">{rider.phone} · Plate: {rider.plate_number}</p>
+                        <p className="mt-1 text-[10px] text-slate-400">
+                          Submitted on {new Date(rider.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        {rider.license_image_url ? (
+                          <a
+                            href={rider.license_image_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                          >
+                            License ↗
+                          </a>
+                        ) : (
+                          <span className="px-2 py-1 text-xs text-slate-400">No License</span>
+                        )}
+                        {rider.ghana_card_image_url ? (
+                          <a
+                            href={rider.ghana_card_image_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                          >
+                            Ghana Card ↗
+                          </a>
+                        ) : (
+                          <span className="px-2 py-1 text-xs text-slate-400">No Card</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-2 border-t border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => void reviewRider(rider, 'approved')}
+                        disabled={reviewingId !== null}
+                        className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                      >
+                        {reviewingId === rider.id ? 'Approving…' : 'Approve Application'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void reviewRider(rider, 'rejected')}
+                        disabled={reviewingId !== null}
+                        className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-xs font-bold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+                      >
+                        Reject
+                      </button>
                     </div>
                   </article>
-                );
-              })}
-            </div>
-          )}
-        </section>
+                ))}
+              </div>
+            )}
+          </section>
         )}
 
-        {activeSection === 'incidents' && <IncidentManagement
-          reportTripId={reportIncidentTripId}
-          onReportHandled={() => setReportIncidentTripId(null)}
-          canCreateIncidents={adminRole !== 'support'}
-          canAddNotes
-          canResolveIncidents={adminRole !== 'support'}
-        />}
-        {activeSection === 'audit-log' && <AuditLog />}
-        {activeSection === 'staff-access' && <StaffAccess currentUserId={user?.id ?? 0} />}
-        {activeSection === 'reports' && <Reports />}
-
-        {activeSection === 'overview' && (
-        <>
-        <section className="admin-alerts-panel" aria-labelledby="admin-alerts-title">
-          <div className="mb-4">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-800">Needs attention</p>
-            <h2 id="admin-alerts-title" className="mt-1 text-lg font-bold text-slate-900">Operations alerts</h2>
-            <p className="mt-1 text-sm text-slate-600">Open the queue for any work that needs follow-up.</p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <article className={`admin-alert-card ${dashboard?.stats.open_incidents ? 'has-alert' : 'is-clear'}`}>
-              <div>
-                <p className="admin-alert-count">{dashboard?.stats.open_incidents.toLocaleString() ?? '—'}</p>
-                <h3>Open incidents</h3>
-                <p>{dashboard?.stats.open_incidents ? 'Reports waiting for review or resolution.' : 'No reports are waiting for follow-up.'}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => selectSection('incidents')}
-                className="admin-alert-action"
-              >
-                {dashboard?.stats.open_incidents ? 'Review incidents' : 'Open incident queue'}
-                <span aria-hidden="true">→</span>
-              </button>
-            </article>
-            <article className={`admin-alert-card ${dashboard?.stats.pending_rider_profiles ? 'has-alert' : 'is-clear'}`}>
-              <div>
-                <p className="admin-alert-count">{dashboard?.stats.pending_rider_profiles.toLocaleString() ?? '—'}</p>
-                <h3>Pending rider reviews</h3>
-                <p>{dashboard?.stats.pending_rider_profiles ? 'Applications need document review.' : 'No rider applications are waiting for review.'}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => selectSection('rider-review')}
-                className="admin-alert-action"
-              >
-                {dashboard?.stats.pending_rider_profiles ? 'Review applications' : 'Open rider verification'}
-                <span aria-hidden="true">→</span>
-              </button>
-            </article>
-          </div>
-        </section>
-
-        <section aria-label="Platform overview">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-bold">Platform overview</h2>
-            {isLoading && <span className="text-sm text-slate-500">Updating…</span>}
-          </div>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-            {statCards.map((card) => (
-              <article key={card.label} className="admin-stat-card rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                <p className="text-sm text-slate-500">{card.label}</p>
-                <p className="mt-2 text-3xl font-bold">{card.value.toLocaleString()}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-        </>
-        )}
-
-        {activeSection === 'rider-review' && <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-md shadow-slate-900/5 sm:p-6">
-          <div className="mb-4 flex items-start justify-between gap-3">
+        {activeSection === 'accounts' && (
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
             <div>
-              <h2 className="text-lg font-bold tracking-tight">Rider verification</h2>
-              <p className="text-sm text-slate-500">Review submitted documents before riders can go online.</p>
+              <h3 className="text-base font-bold text-slate-900">User Account Management</h3>
+              <p className="text-xs text-slate-500">Create new passenger or rider accounts and inspect existing credentials.</p>
             </div>
-            <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-800">
-              {pendingRiders.length} pending
-            </span>
-          </div>
-          {pendingRiders.length === 0 ? (
-            <p className="rounded-xl bg-slate-50 p-5 text-center text-sm text-slate-500">
-              {isLoading ? 'Loading rider applications…' : 'No rider applications are waiting for review.'}
-            </p>
-          ) : (
-            <div className="grid gap-4 lg:grid-cols-2">
-              {pendingRiders.map((rider) => (
-                <article key={rider.id} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h3 className="font-bold">{rider.name}</h3>
-                      <p className="text-sm text-slate-600">{rider.phone} · {rider.plate_number}</p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Submitted {new Date(rider.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      {rider.license_image_url ? (
-                        <a
-                          href={rider.license_image_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700"
-                        >
-                          Driver license
-                        </a>
-                      ) : (
-                        <span className="px-2 py-2 text-xs text-slate-400">License unavailable</span>
-                      )}
-                      {rider.ghana_card_image_url ? (
-                        <a
-                          href={rider.ghana_card_image_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700"
-                        >
-                          Ghana Card
-                        </a>
-                      ) : (
-                        <span className="px-2 py-2 text-xs text-slate-400">Ghana Card unavailable</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void reviewRider(rider, 'approved')}
-                      disabled={reviewingId !== null}
-                      className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                    >
-                      {reviewingId === rider.id ? 'Saving…' : 'Approve'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void reviewRider(rider, 'rejected')}
-                      disabled={reviewingId !== null}
-                      className="rounded-xl bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-800 transition hover:bg-orange-100 disabled:opacity-50"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>}
 
-        {activeSection === 'accounts' && <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-md shadow-slate-900/5 sm:p-6">
-          <div className="mb-5">
-            <h2 className="text-lg font-bold tracking-tight">Account management</h2>
-            <p className="text-sm text-slate-500">Create passenger or rider accounts and find existing accounts by phone number.</p>
-          </div>
-          <form onSubmit={createAccount} className="mb-5 grid gap-3 rounded-xl bg-slate-50 p-4 md:grid-cols-[1fr_180px_auto]">
-            <label className="text-sm font-medium text-slate-700">
-              Phone number
-              <input
-                type="tel"
-                required
-                minLength={10}
-                maxLength={15}
-                pattern="[0-9]{10,15}"
-                value={newAccountPhone}
-                onChange={(event) => setNewAccountPhone(event.target.value.replace(/\D/g, ''))}
-                placeholder="0241234567"
-                className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2"
-              />
-            </label>
-            <label className="text-sm font-medium text-slate-700">
-              Account type
-              <select
-                value={newAccountRole}
-                onChange={(event) => setNewAccountRole(event.target.value as 'passenger' | 'rider')}
-                className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2"
-              >
-                <option value="passenger">Passenger</option>
-                <option value="rider">Rider</option>
-              </select>
-            </label>
-            <button
-              type="submit"
-              disabled={isCreatingAccount}
-              className="self-end rounded-xl bg-brand px-4 py-2 font-semibold text-slate-950 shadow-sm transition hover:bg-amber-400 disabled:opacity-50"
-            >
-              {isCreatingAccount ? 'Creating…' : 'Create account'}
-            </button>
-          </form>
-          {accountMessage && <p className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">{accountMessage}</p>}
-          {accountError && <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{accountError}</p>}
-          {suspensionTarget && (
-            <form onSubmit={(event) => void updateAccountSuspension(event)} className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4">
-              <div className="mb-3">
-                <h3 className="font-semibold text-red-900">Suspend {suspensionTarget.role} account</h3>
-                <p className="text-sm text-red-800">{suspensionTarget.phone} will lose API access and have active sessions revoked.</p>
-              </div>
-              <label className="block text-sm font-semibold text-slate-700">
-                Reason (required)
-                <textarea
+            {/* Quick Create Account Form */}
+            <form onSubmit={createAccount} className="grid gap-3 rounded-xl bg-slate-50 p-4 border border-slate-200 md:grid-cols-[1fr_180px_auto]">
+              <label className="text-xs font-bold text-slate-700">
+                Mobile Number
+                <input
+                  type="tel"
                   required
-                  minLength={5}
-                  maxLength={500}
-                  rows={3}
-                  value={suspensionReason}
-                  onChange={(event) => setSuspensionReason(event.target.value)}
-                  className="mt-1 block w-full rounded-lg border border-red-200 bg-white px-3 py-2"
-                  placeholder="Briefly explain why this account is being suspended"
+                  minLength={10}
+                  maxLength={15}
+                  value={newAccountPhone}
+                  onChange={(event) => setNewAccountPhone(event.target.value.replace(/\D/g, ''))}
+                  placeholder="e.g. 0241234567"
+                  className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-mono"
                 />
               </label>
-              <div className="mt-3 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSuspensionTarget(null);
-                    setSuspensionReason('');
-                  }}
-                  disabled={isUpdatingSuspension}
-                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold disabled:opacity-50"
+              <label className="text-xs font-bold text-slate-700">
+                Account Role
+                <select
+                  value={newAccountRole}
+                  onChange={(event) => setNewAccountRole(event.target.value as 'passenger' | 'rider')}
+                  className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isUpdatingSuspension || suspensionReason.trim().length < 5}
-                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                >
-                  {isUpdatingSuspension ? 'Suspending…' : 'Suspend account'}
-                </button>
-              </div>
+                  <option value="passenger">Passenger</option>
+                  <option value="rider">Rider</option>
+                </select>
+              </label>
+              <button
+                type="submit"
+                disabled={isCreatingAccount}
+                className="self-end rounded-xl bg-amber-400 px-4 py-2 text-xs font-bold text-slate-950 shadow-sm transition hover:bg-amber-300 disabled:opacity-50"
+              >
+                {isCreatingAccount ? 'Creating…' : '+ Create Account'}
+              </button>
             </form>
-          )}
-          <div className="mb-4 grid gap-3 md:grid-cols-[1fr_180px_auto]">
-            <label className="sr-only" htmlFor="account-search">Search accounts by phone number</label>
-            <input
-              id="account-search"
-              type="search"
-              value={accountSearch}
-              onChange={(event) => setAccountSearch(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  void loadAccounts(1, accountSearch, accountRole);
-                }
-              }}
-              placeholder="Search by phone number"
-              className="rounded-lg border border-slate-200 px-3 py-2"
-            />
-            <label className="sr-only" htmlFor="account-role-filter">Filter account type</label>
-            <select
-              id="account-role-filter"
-              value={accountRole}
-              onChange={(event) => {
-                const role = event.target.value as 'all' | 'passenger' | 'rider';
-                setAccountRole(role);
-                void loadAccounts(1, accountSearch, role);
-              }}
-              className="rounded-lg border border-slate-200 px-3 py-2"
-            >
-              <option value="all">All accounts</option>
-              <option value="passenger">Passengers</option>
-              <option value="rider">Riders</option>
-            </select>
-            <button
-              type="button"
-              onClick={() => void loadAccounts(1, accountSearch, accountRole)}
-              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700"
-            >
-              Search
-            </button>
-          </div>
-          {accounts && accounts.data.length > 0 ? (
-            <>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] text-left text-sm">
-                  <thead className="border-b border-slate-200 text-xs uppercase text-slate-500">
+
+            {accountMessage && <p className="rounded-lg bg-emerald-50 p-3 text-xs text-emerald-800 border border-emerald-200">{accountMessage}</p>}
+            {accountError && <p className="rounded-lg bg-red-50 p-3 text-xs text-red-700 border border-red-200" role="alert">{accountError}</p>}
+
+            {/* Suspension Form Modal/Card */}
+            {suspensionTarget && (
+              <form onSubmit={(e) => void updateAccountSuspension(e)} className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
+                <div>
+                  <h4 className="font-bold text-red-900 text-sm">Suspend {suspensionTarget.role} Account</h4>
+                  <p className="text-xs text-red-700">{suspensionTarget.phone} will have active sessions revoked.</p>
+                </div>
+                <label className="block text-xs font-bold text-slate-700">
+                  Suspension Reason (Required)
+                  <textarea
+                    required
+                    minLength={5}
+                    maxLength={500}
+                    rows={2}
+                    value={suspensionReason}
+                    onChange={(e) => setSuspensionReason(e.target.value)}
+                    className="mt-1 block w-full rounded-xl border border-red-200 bg-white px-3 py-2 text-xs"
+                    placeholder="Enter reason for account suspension..."
+                  />
+                </label>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSuspensionTarget(null);
+                      setSuspensionReason('');
+                    }}
+                    disabled={isUpdatingSuspension}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isUpdatingSuspension || suspensionReason.trim().length < 5}
+                    className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {isUpdatingSuspension ? 'Suspending…' : 'Confirm Suspension'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Account Search & Filter */}
+            <div className="grid gap-3 md:grid-cols-[1fr_180px_auto]">
+              <input
+                type="search"
+                value={accountSearch}
+                onChange={(e) => setAccountSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    void loadAccounts(1, accountSearch, accountRole);
+                  }
+                }}
+                placeholder="Search by phone number..."
+                className="rounded-xl border border-slate-200 px-3 py-2 text-xs"
+              />
+              <select
+                value={accountRole}
+                onChange={(e) => {
+                  const role = e.target.value as 'all' | 'passenger' | 'rider';
+                  setAccountRole(role);
+                  void loadAccounts(1, accountSearch, role);
+                }}
+                className="rounded-xl border border-slate-200 px-3 py-2 text-xs"
+              >
+                <option value="all">All Roles</option>
+                <option value="passenger">Passengers</option>
+                <option value="rider">Riders</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => void loadAccounts(1, accountSearch, accountRole)}
+                className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800"
+              >
+                Search
+              </button>
+            </div>
+
+            {/* Accounts Table */}
+            {accounts && accounts.data.length > 0 ? (
+              <div className="space-y-3">
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full min-w-[760px] text-left text-xs">
+                    <thead className="border-b border-slate-200 bg-slate-50 text-[10px] uppercase font-bold text-slate-500">
+                      <tr>
+                        <th className="py-2.5 px-3">Phone</th>
+                        <th className="py-2.5 px-3">Role</th>
+                        <th className="py-2.5 px-3">Status</th>
+                        <th className="py-2.5 px-3">Access</th>
+                        <th className="py-2.5 px-3">Action</th>
+                        <th className="py-2.5 px-3">Created</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {accounts.data.map((acc) => (
+                        <tr key={acc.id} className="hover:bg-slate-50 transition">
+                          <td className="py-2.5 px-3 font-mono font-bold text-slate-900">{acc.phone}</td>
+                          <td className="py-2.5 px-3 capitalize">{acc.role}</td>
+                          <td className="py-2.5 px-3 capitalize">{acc.status}</td>
+                          <td className="py-2.5 px-3">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${acc.is_suspended ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                              {acc.is_suspended ? 'Suspended' : 'Active'}
+                            </span>
+                            {acc.is_suspended && acc.suspension_reason && (
+                              <p className="mt-0.5 text-[10px] text-slate-500 line-clamp-1">{acc.suspension_reason}</p>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <button
+                              type="button"
+                              disabled={isUpdatingSuspension}
+                              onClick={() => {
+                                if (acc.is_suspended) void restoreAccount(acc);
+                                else {
+                                  setAccountError(null);
+                                  setSuspensionReason('');
+                                  setSuspensionTarget(acc);
+                                }
+                              }}
+                              className={`rounded-lg px-2.5 py-1 text-xs font-bold disabled:opacity-50 ${
+                                acc.is_suspended ? 'border border-emerald-300 text-emerald-800 hover:bg-emerald-50' : 'border border-red-200 text-red-700 hover:bg-red-50'
+                              }`}
+                            >
+                              {acc.is_suspended ? 'Restore' : 'Suspend'}
+                            </button>
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-400">{new Date(acc.created_at).toLocaleDateString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span>{accounts.total.toLocaleString()} accounts total · Page {accounts.current_page} of {accounts.last_page}</span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void loadAccounts(accountPage - 1, accountSearch, accountRole)}
+                      disabled={accountPage <= 1}
+                      className="rounded-lg border border-slate-200 px-3 py-1.5 font-bold disabled:opacity-40"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void loadAccounts(accountPage + 1, accountSearch, accountRole)}
+                      disabled={accountPage >= accounts.last_page}
+                      className="rounded-lg border border-slate-200 px-3 py-1.5 font-bold disabled:opacity-40"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : accounts ? (
+              <p className="rounded-xl bg-slate-50 p-6 text-center text-xs text-slate-500">No matching accounts found.</p>
+            ) : null}
+          </section>
+        )}
+
+        {activeSection === 'recent-trips' && (
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+            <h3 className="text-base font-bold text-slate-900">Recent Trip History</h3>
+            {recentTrips.length ? (
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full min-w-[600px] text-left text-xs">
+                  <thead className="border-b border-slate-200 bg-slate-50 text-[10px] uppercase font-bold text-slate-500">
                     <tr>
-                      <th className="pb-3 pr-4">Phone</th>
-                      <th className="pb-3 pr-4">Type</th>
-                      <th className="pb-3 pr-4">Status</th>
-                      <th className="pb-3 pr-4">Account access</th>
-                      <th className="pb-3 pr-4">Action</th>
-                      <th className="pb-3">Created</th>
+                      <th className="py-2.5 px-3">Trip ID</th>
+                      <th className="py-2.5 px-3">Route</th>
+                      <th className="py-2.5 px-3">Status</th>
+                      <th className="py-2.5 px-3">Fare</th>
+                      <th className="py-2.5 px-3">Timestamp</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {accounts.data.map((account) => (
-                      <tr key={account.id} className="border-b border-slate-100 last:border-0">
-                        <td className="py-3 pr-4 font-medium">{account.phone}</td>
-                        <td className="py-3 pr-4 capitalize">{account.role}</td>
-                        <td className="py-3 pr-4 capitalize">{account.status}</td>
-                        <td className="py-3 pr-4">
-                          <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${account.is_suspended ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                            {account.is_suspended ? 'Suspended' : 'Active'}
+                  <tbody className="divide-y divide-slate-100">
+                    {recentTrips.map((trip) => (
+                      <tr key={trip.id} className="hover:bg-slate-50 transition">
+                        <td className="py-2.5 px-3 font-mono font-bold text-slate-900">#{trip.id}</td>
+                        <td className="py-2.5 px-3 max-w-xs truncate font-medium">
+                          {trip.pickup_location || 'Pickup'} → {trip.destination_location || 'Destination'}
+                        </td>
+                        <td className="py-2.5 px-3 capitalize">
+                          <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+                            trip.status === 'completed'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : trip.status === 'cancelled'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-slate-100 text-slate-800'
+                          }`}>
+                            {trip.status}
                           </span>
-                          {account.is_suspended && account.suspension_reason && (
-                            <p className="mt-1 max-w-56 whitespace-normal text-xs text-slate-500">{account.suspension_reason}</p>
-                          )}
                         </td>
-                        <td className="py-3 pr-4">
-                          <button
-                            type="button"
-                            disabled={isUpdatingSuspension}
-                            onClick={() => {
-                              if (account.is_suspended) void restoreAccount(account);
-                              else {
-                                setAccountError(null);
-                                setSuspensionReason('');
-                                setSuspensionTarget(account);
-                              }
-                            }}
-                            className={`rounded-lg px-3 py-2 text-xs font-semibold disabled:opacity-50 ${account.is_suspended ? 'border border-green-200 text-green-800 hover:bg-green-50' : 'border border-red-200 text-red-700 hover:bg-red-50'}`}
-                          >
-                            {account.is_suspended ? 'Restore' : 'Suspend'}
-                          </button>
-                        </td>
-                        <td className="py-3">{new Date(account.created_at).toLocaleDateString()}</td>
+                        <td className="py-2.5 px-3 font-bold text-slate-900">₵{Number(trip.estimated_fare).toFixed(2)}</td>
+                        <td className="py-2.5 px-3 text-slate-400">{new Date(trip.created_at).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
-                <span>{accounts.total.toLocaleString()} accounts · Page {accounts.current_page} of {accounts.last_page}</span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => void loadAccounts(accountPage - 1, accountSearch, accountRole)}
-                    disabled={accountPage <= 1}
-                    className="rounded-lg border border-slate-200 px-3 py-2 disabled:opacity-40"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void loadAccounts(accountPage + 1, accountSearch, accountRole)}
-                    disabled={accountPage >= accounts.last_page}
-                    className="rounded-lg border border-slate-200 px-3 py-2 disabled:opacity-40"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : accounts ? (
-            <p className="rounded-xl bg-slate-50 p-5 text-center text-sm text-slate-500">No matching accounts.</p>
-          ) : null}
-        </section>}
+            ) : (
+              <p className="py-8 text-center text-xs text-slate-500">{isLoading ? 'Loading recent trips…' : 'No trips recorded yet.'}</p>
+            )}
+          </section>
+        )}
 
-        {activeSection === 'recent-trips' && <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-md shadow-slate-900/5 sm:p-6">
-          <h2 className="mb-4 text-lg font-bold">Recent trips</h2>
-          {recentTrips.length ? (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[600px] text-left text-sm">
-                <thead className="border-b border-slate-200 text-xs uppercase text-slate-500">
-                  <tr>
-                    <th className="pb-3 pr-4">Trip</th>
-                    <th className="pb-3 pr-4">Route</th>
-                    <th className="pb-3 pr-4">Status</th>
-                    <th className="pb-3 pr-4">Fare</th>
-                    <th className="pb-3">Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentTrips.map((trip) => (
-                    <tr key={trip.id} className="border-b border-slate-100 last:border-0">
-                      <td className="py-3 pr-4 font-semibold">#{trip.id}</td>
-                      <td className="max-w-xs truncate py-3 pr-4">
-                        {trip.pickup_location || 'Pickup'} → {trip.destination_location || 'Destination'}
-                      </td>
-                      <td className="py-3 pr-4 capitalize">{trip.status}</td>
-                      <td className="py-3 pr-4">₵{Number(trip.estimated_fare).toFixed(2)}</td>
-                      <td className="py-3">{new Date(trip.created_at).toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="py-4 text-sm text-slate-500">{isLoading ? 'Loading recent trips…' : 'No trips to show yet.'}</p>
-          )}
-        </section>}
+        {/* 4. GOVERNANCE SECTIONS */}
+        {activeSection === 'reports' && <Reports />}
+        {activeSection === 'audit-log' && <AuditLog />}
+        {activeSection === 'staff-access' && <StaffAccess currentUserId={user?.id ?? 0} />}
       </main>
     </div>
   );

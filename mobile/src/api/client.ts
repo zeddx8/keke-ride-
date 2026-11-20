@@ -16,4 +16,19 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const message = error.response?.data?.message || '';
+    if (status === 401 || (status === 403 && typeof message === 'string' && (message.toLowerCase().includes('suspended') || message.toLowerCase().includes('deactivated')))) {
+      localStorage.removeItem('auth_token');
+      if (window.location.pathname !== '/') {
+        window.location.href = '/';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default apiClient;

@@ -12,6 +12,8 @@ class Trip extends Model
     protected $fillable = [
         'passenger_id',
         'rider_id',
+        'dispatch_rider_id',
+        'dispatch_expires_at',
         'pickup_point',
         'pickup_location',
         'landmark_note',
@@ -22,6 +24,8 @@ class Trip extends Model
         'route_geometry',
         'status',
         'payment_method',
+        'payment_status',
+        'payment_collected_at',
         'completed_at',
         'share_token',
         'share_expires_at',
@@ -32,7 +36,9 @@ class Trip extends Model
         return [
             'route_geometry' => 'array',
             'completed_at' => 'datetime',
+            'payment_collected_at' => 'datetime',
             'share_expires_at' => 'datetime',
+            'dispatch_expires_at' => 'datetime',
         ];
     }
 

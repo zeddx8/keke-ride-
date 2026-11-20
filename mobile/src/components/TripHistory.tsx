@@ -31,6 +31,7 @@ interface TripHistoryItem {
   estimated_distance_km: number | string;
   estimated_fare: number | string;
   payment_method: string;
+  payment_status: 'pending' | 'collected';
   created_at: string;
   rating: TripRating | null;
   incidents: TripIncidentStatus[];
@@ -184,7 +185,7 @@ const TripHistory = () => {
       <button
         type="button"
         onClick={openHistory}
-        className="dashboard-history rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-amber-300 hover:bg-amber-50"
+        className="dashboard-history rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-black shadow-sm transition hover:border-amber-300 hover:bg-amber-50"
       >
         History
       </button>
@@ -198,14 +199,14 @@ const TripHistory = () => {
             className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-6"
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 id="trip-history-title" className="text-lg font-bold text-gray-900">
+              <h2 id="trip-history-title" className="text-lg font-bold text-black">
                 Trip history
               </h2>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
                 aria-label="Close trip history"
-                className="rounded-lg px-3 py-2 text-gray-600 hover:bg-gray-100"
+                className="rounded-lg px-3 py-2 text-black hover:bg-gray-100"
               >
                 Close
               </button>
@@ -231,36 +232,41 @@ const TripHistory = () => {
             )}
 
             {!error && !isLoading && history.length === 0 && (
-              <p className="py-8 text-center text-sm text-gray-500">Your trips will appear here.</p>
+              <p className="py-8 text-center text-sm text-black">Your trips will appear here.</p>
             )}
 
             <div className="space-y-3">
               {history.map((trip) => (
                 <article key={trip.id} className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4">
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <span className="font-semibold capitalize text-gray-900">{trip.status}</span>
-                    <time className="text-xs text-gray-500">
+                    <span className="font-semibold capitalize text-black">{trip.status}</span>
+                    <time className="text-xs text-black">
                       {new Date(trip.created_at).toLocaleString()}
                     </time>
                   </div>
-                  <p className="text-sm text-gray-700">
+                  <p className="text-sm text-black">
                     <span className="font-medium">From:</span>{' '}
                     {formatLocation(trip.pickup_location, trip.pickup_lat, trip.pickup_lng)}
                   </p>
-                  <p className="text-sm text-gray-700">
+                  <p className="text-sm text-black">
                     <span className="font-medium">To:</span>{' '}
                     {formatLocation(trip.destination_location, trip.destination_lat, trip.destination_lng)}
                   </p>
-                  <p className="mt-2 text-sm text-gray-600">
+                  <p className="mt-2 text-sm text-black">
                     {Number(trip.estimated_distance_km).toFixed(2)} km · ₵{Number(trip.estimated_fare).toFixed(2)} · {trip.payment_method}
                   </p>
+                  {trip.status === 'completed' && trip.payment_method === 'cash' && (
+                    <p className={`mt-1 text-xs font-semibold ${trip.payment_status === 'collected' ? 'text-green-700' : 'text-amber-700'}`}>
+                      Cash {trip.payment_status === 'collected' ? 'collected' : 'payment pending'}
+                    </p>
+                  )}
                   <ReportTripIssue tripId={trip.id} />
                   {trip.incidents.length > 0 && (
                     <div className="mt-3 space-y-2" aria-label="Your incident reports for this trip">
                       {trip.incidents.map((incident) => (
                         <div key={incident.id} className={`rounded-xl border p-3 ${incident.status === 'resolved' ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
                           <div className="flex flex-wrap items-center justify-between gap-2">
-                            <p className="text-sm font-semibold text-gray-900">{incident.summary}</p>
+                            <p className="text-sm font-semibold text-black">{incident.summary}</p>
                             <span className={`rounded-full px-2 py-1 text-xs font-bold capitalize ${incident.status === 'resolved' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}`}>
                               {incident.status}
                             </span>
@@ -269,7 +275,7 @@ const TripHistory = () => {
                             <p className="mt-2 text-sm text-emerald-900">{incident.reporter_message}</p>
                           )}
                           {incident.status === 'resolved' && incident.resolved_at && (
-                            <p className="mt-2 text-xs text-gray-600">
+                            <p className="mt-2 text-xs text-black">
                               Updated {new Date(incident.resolved_at).toLocaleString()}
                             </p>
                           )}
@@ -282,11 +288,11 @@ const TripHistory = () => {
                       <p>
                         {user?.role === 'rider' ? 'Passenger rating' : 'Your rating'}: {trip.rating.rating}/5
                       </p>
-                      {trip.rating.comment && <p className="mt-1 text-gray-700">{trip.rating.comment}</p>}
+                      {trip.rating.comment && <p className="mt-1 text-black">{trip.rating.comment}</p>}
                     </div>
                   ) : user?.role === 'passenger' && trip.status === 'completed' && trip.rider_id !== null ? (
                     <div className="mt-3 rounded-lg bg-gray-50 p-3">
-                      <p className="text-sm font-semibold text-gray-800">Rate your rider</p>
+                      <p className="text-sm font-semibold text-black">Rate your rider</p>
                       <div className="my-2 flex gap-1" role="group" aria-label={`Rating for trip ${trip.id}`}>
                         {[1, 2, 3, 4, 5].map((value) => (
                           <button
@@ -295,7 +301,7 @@ const TripHistory = () => {
                             aria-label={`Rate ${value} star${value === 1 ? '' : 's'}`}
                             aria-pressed={ratingDrafts[trip.id] === value}
                             onClick={() => setRatingDrafts((current) => ({ ...current, [trip.id]: value }))}
-                            className={`text-2xl ${ratingDrafts[trip.id] >= value ? 'text-amber-500' : 'text-gray-300'}`}
+                            className={`text-2xl ${ratingDrafts[trip.id] >= value ? 'text-amber-500' : 'text-black'}`}
                           >
                             ★
                           </button>
@@ -333,12 +339,12 @@ const TripHistory = () => {
               ))}
             </div>
 
-            {isLoading && <p className="py-4 text-center text-sm text-gray-500">Loading trips...</p>}
+            {isLoading && <p className="py-4 text-center text-sm text-black">Loading trips...</p>}
             {!isLoading && page < lastPage && history.length > 0 && (
               <button
                 type="button"
                 onClick={() => void loadHistory(page + 1, false)}
-                className="mt-4 w-full rounded-xl border border-gray-200 py-3 text-sm font-semibold text-gray-700"
+                className="mt-4 w-full rounded-xl border border-gray-200 py-3 text-sm font-semibold text-black"
               >
                 Load more
               </button>

@@ -6,9 +6,32 @@ use App\Events\RiderLocationUpdated;
 use App\Models\RiderLocation;
 use App\Models\Trip;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class LocationController extends Controller
 {
+    public function updateDeviceToken(Request $request)
+    {
+        if ($request->user()->role !== 'rider') {
+            return response()->json([
+                'message' => 'Unauthorized. Only drivers can register a device token.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'token' => ['nullable', 'string', 'max:4096'],
+        ]);
+
+        $request->user()->update([
+            'fcm_token' => $validated['token'] ?? null,
+            'fcm_token_updated_at' => isset($validated['token']) ? now() : null,
+        ]);
+
+        return response()->json([
+            'registered' => filled($validated['token'] ?? null),
+        ]);
+    }
+
     public function updateStatus(Request $request)
     {
         $validated = $request->validate([
@@ -37,7 +60,7 @@ class LocationController extends Controller
 
         // Update the driver's status in the database so the dispatch loop can find them
         $user->update(['status' => $status]);
-        RiderLocation::query()
+        DB::table('rider_locations')
             ->where('rider_id', $user->id)
             ->update(['is_online' => $status === 'active']);
 

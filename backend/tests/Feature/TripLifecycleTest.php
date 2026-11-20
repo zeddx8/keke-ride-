@@ -56,6 +56,44 @@ class TripLifecycleTest extends TestCase
         ]);
     }
 
+    public function test_assigned_rider_can_confirm_cash_collection_after_completion(): void
+    {
+        $passenger = User::factory()->create(['role' => 'passenger']);
+        $rider = User::factory()->create(['role' => 'rider']);
+        $trip = $this->createTrip($passenger, $rider, 'started');
+        $trip->update(['payment_method' => 'cash', 'status' => 'completed', 'completed_at' => now()]);
+
+        $this->actingAs($rider)
+            ->postJson("/api/trips/{$trip->id}/payment/collect")
+            ->assertOk()
+            ->assertJsonPath('payment_status', 'collected');
+
+        $this->assertDatabaseHas('trips', [
+            'id' => $trip->id,
+            'payment_method' => 'cash',
+            'payment_status' => 'collected',
+        ]);
+        $this->assertNotNull($trip->fresh()->payment_collected_at);
+    }
+
+    public function test_cash_collection_requires_assignment_and_completed_trip(): void
+    {
+        $passenger = User::factory()->create(['role' => 'passenger']);
+        $assignedRider = User::factory()->create(['role' => 'rider']);
+        $otherRider = User::factory()->create(['role' => 'rider']);
+        $trip = $this->createTrip($passenger, $assignedRider, 'started');
+        $trip->update(['payment_method' => 'cash']);
+
+        $this->actingAs($otherRider)
+            ->postJson("/api/trips/{$trip->id}/payment/collect")
+            ->assertForbidden();
+
+        $this->actingAs($assignedRider)
+            ->postJson("/api/trips/{$trip->id}/payment/collect")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('trip');
+    }
+
     public function test_trip_status_must_advance_in_order(): void
     {
         $passenger = User::factory()->create(['role' => 'passenger']);

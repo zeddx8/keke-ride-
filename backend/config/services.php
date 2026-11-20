@@ -35,6 +35,15 @@ return [
         'cache_ttl_seconds' => (int) env('ROUTING_CACHE_TTL_SECONDS', 300),
     ],
 
+    'hubtel' => [
+        'url' => env('HUBTEL_SMS_URL', 'https://smsc.hubtel.com/v1/messages/send'),
+        'client_id' => env('HUBTEL_CLIENT_ID'),
+        'client_secret' => env('HUBTEL_CLIENT_SECRET'),
+        'sender_id' => env('HUBTEL_SENDER_ID', 'KekeRide'),
+        'timeout_seconds' => (int) env('HUBTEL_SMS_TIMEOUT_SECONDS', 10),
+        'connect_timeout_seconds' => (int) env('HUBTEL_SMS_CONNECT_TIMEOUT_SECONDS', 5),
+    ],
+
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],

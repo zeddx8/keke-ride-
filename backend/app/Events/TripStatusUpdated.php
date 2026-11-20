@@ -19,9 +19,19 @@ class TripStatusUpdated implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        return [
+        $channels = [
             new PrivateChannel('passenger.' . $this->trip->passenger_id),
         ];
+
+        if ($this->trip->dispatch_rider_id) {
+            $channels[] = new PrivateChannel('rider.' . $this->trip->dispatch_rider_id);
+        }
+
+        if ($this->trip->rider_id) {
+            $channels[] = new PrivateChannel('rider.' . $this->trip->rider_id);
+        }
+
+        return $channels;
     }
 
     public function broadcastWith(): array

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\HubtelSmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -14,6 +15,7 @@ class OtpController extends Controller
 {
     public function register(Request $request)
     {
+        $this->sanitizePhoneInput($request);
         $validated = $request->validate([
             'name' => 'required|string|max:100',
             'phone' => 'required|string|regex:/^[0-9]{10,15}$/|unique:users,phone',
@@ -42,6 +44,7 @@ class OtpController extends Controller
 
     public function login(Request $request)
     {
+        $this->sanitizePhoneInput($request);
         $validated = $request->validate([
             'phone' => 'required|string|regex:/^[0-9]{10,15}$/',
             'password' => 'required|string',
@@ -82,13 +85,14 @@ class OtpController extends Controller
 
     public function verifyRegistration(Request $request)
     {
+        $this->sanitizePhoneInput($request);
         $validated = $request->validate([
             'phone' => 'required|string|regex:/^[0-9]{10,15}$/',
             'otp' => 'required|string|size:6',
             'device_name' => 'required|string|max:100',
         ]);
 
-        $this->ensureSmsDeliveryConfigured();
+        $this->enforceOtpVerificationLimit($validated['phone']);
         $user = $this->verifiedOtpUser($validated['phone'], $validated['otp'], 'registration');
         $user->forceFill([
             'phone_verified_at' => now(),
@@ -97,11 +101,14 @@ class OtpController extends Controller
             'otp_purpose' => null,
         ])->save();
 
+        RateLimiter::clear($this->otpVerificationKey($validated['phone']));
+
         return $this->tokenResponse($user, $validated['device_name']);
     }
 
     public function resendRegistrationOtp(Request $request)
     {
+        $this->sanitizePhoneInput($request);
         $validated = $request->validate([
             'phone' => 'required|string|regex:/^[0-9]{10,15}$/',
         ]);
@@ -126,6 +133,7 @@ class OtpController extends Controller
 
     public function forgotPassword(Request $request)
     {
+        $this->sanitizePhoneInput($request);
         $validated = $request->validate([
             'phone' => 'required|string|regex:/^[0-9]{10,15}$/',
         ]);
@@ -149,13 +157,13 @@ class OtpController extends Controller
 
     public function resetPassword(Request $request)
     {
+        $this->sanitizePhoneInput($request);
         $validated = $request->validate([
             'phone' => 'required|string|regex:/^[0-9]{10,15}$/',
             'otp' => 'required|string|size:6',
             'password' => 'required|string|min:8|max:255|confirmed',
         ]);
 
-        $this->ensureSmsDeliveryConfigured();
         $this->enforceOtpVerificationLimit($validated['phone']);
         $user = $this->verifiedOtpUser($validated['phone'], $validated['otp'], 'password_reset');
         $user->forceFill([
@@ -197,13 +205,26 @@ class OtpController extends Controller
     private function issueOtp(User $user, string $purpose): void
     {
         $otp = (string) random_int(100000, 999999);
+
+        if (app()->environment('production')) {
+            try {
+                (new HubtelSmsService())->send(
+                    $user->phone,
+                    "Keke Ride verification code: {$otp}. It expires in 5 minutes.",
+                );
+            } catch (\RuntimeException $exception) {
+                report($exception);
+                abort(503, 'Phone verification delivery is temporarily unavailable. Please try again.');
+            }
+        } else {
+            Log::info("Keke Ride {$purpose} OTP for {$user->phone}: {$otp}");
+        }
+
         $user->forceFill([
             'otp_code' => Hash::make($otp),
             'otp_expires_at' => now()->addMinutes(5),
             'otp_purpose' => $purpose,
         ])->save();
-
-        Log::info("Keke Ride {$purpose} OTP for {$user->phone}: {$otp}");
     }
 
     private function enforceOtpRequestLimit(string $phone): void
@@ -230,7 +251,17 @@ class OtpController extends Controller
     private function ensureSmsDeliveryConfigured(): void
     {
         if (app()->environment('production')) {
-            abort(503, 'Phone verification delivery is not configured. Please contact support.');
+            if (! (new HubtelSmsService())->isConfigured()) {
+                abort(503, 'Phone verification delivery is not configured. Please contact support.');
+            }
+        }
+    }
+
+    private function sanitizePhoneInput(Request $request): void
+    {
+        if ($request->has('phone')) {
+            $cleaned = preg_replace('/[^\d]/', '', trim((string) $request->input('phone')));
+            $request->merge(['phone' => $cleaned]);
         }
     }
 
